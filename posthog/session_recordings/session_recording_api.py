@@ -1722,6 +1722,7 @@ class SessionRecordingViewSet(
                 session_id, user, tracking_id, product_context, custom_tags, force_restart=force_restart
             ),
             endpoint="session_recording_summary",
+            killswitch_flag="session-recordings-sse-killswitch",
         )
 
     @extend_schema(exclude=True)
