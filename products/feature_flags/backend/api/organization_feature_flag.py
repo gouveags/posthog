@@ -24,6 +24,7 @@ from posthog.utils import safe_int
 
 from products.approvals.backend.exceptions import ApprovalRequired, PolicyConflict
 from products.approvals.backend.scheduled_changes import gate_scheduled_change
+from products.approvals.backend.exceptions import ApprovalRequired
 from products.cohorts.backend.models.cohort import Cohort, CohortOrEmpty
 from products.feature_flags.backend.api.feature_flag import FeatureFlagSerializer
 from products.feature_flags.backend.encrypted_flag_payloads import (
