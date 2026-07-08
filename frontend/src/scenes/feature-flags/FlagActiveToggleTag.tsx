@@ -25,6 +25,8 @@ export function FlagActiveToggleTag({
             type={active ? 'success' : 'default'}
             className="uppercase"
             aria-busy={toggling || undefined}
+            role="switch"
+            aria-label="Feature flag active in this project"
             data-attr={dataAttr}
         >
             <LemonSwitch
