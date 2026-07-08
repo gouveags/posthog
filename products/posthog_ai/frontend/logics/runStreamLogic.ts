@@ -14,7 +14,7 @@ import { tasksRunsCommandCreate, tasksRunsStreamTokenRetrieve } from 'products/t
 import type { TaskRunBootstrapCreateRequestInitialPermissionModeEnumApi } from 'products/tasks/frontend/generated/api.schemas'
 
 import { parseSandboxQuestions } from '../policy/questionUtils'
-import { defaultPermissionDecision, findAllowOptionId } from '../policy/toolPolicy'
+import { defaultPermissionDecision, findAllowOptionId, isPersistPromptTool } from '../policy/toolPolicy'
 import type {
     ContextUsage,
     PermissionRequestRecord,
@@ -51,6 +51,7 @@ import {
 } from '../types/wireTypes'
 import { getClaudeCodeMeta, resolveToolCall } from '../utils/toolResolver'
 import { debugLogsLogic } from './debugLogsLogic'
+import { foregroundStreamLogic } from './foregroundStreamLogic'
 import type { runStreamLogicType } from './runStreamLogicType'
 import { hasReplayListener, toolStreamEventsLogic } from './toolStreamEventsLogic'
 
@@ -1265,6 +1266,8 @@ export const runStreamLogic = kea<runStreamLogicType>([
             ['showDebugLogs'],
             toolStreamEventsLogic,
             ['toolListeners'],
+            foregroundStreamLogic,
+            ['foregroundStreamKey'],
         ],
         actions: [toolStreamEventsLogic, ['emitToolEvent', 'emitRunLifecycleEvent']],
     })),
@@ -2330,7 +2333,17 @@ export const runStreamLogic = kea<runStreamLogicType>([
         },
         routePermissionRequest: ({ record, replayedFromHistory }) => {
             // Replayed history is a read-only restore — never auto-approve (the run may be terminal).
-            if (!replayedFromHistory && defaultPermissionDecision(record) === 'auto_allow') {
+            // Create-family persist tools (dashboards, feature flags, surveys, hog functions, email
+            // templates) must still prompt when this run is the foreground stream (the run rendered in
+            // the side panel the user is watching), even though `defaultPermissionDecision` would
+            // auto-approve them as non-destructive. Background and headless runs keep auto-approving.
+            const isForegroundStream = props.streamKey === values.foregroundStreamKey
+            const forcePromptForForeground = isForegroundStream && isPersistPromptTool(record)
+            if (
+                !replayedFromHistory &&
+                !forcePromptForForeground &&
+                defaultPermissionDecision(record) === 'auto_allow'
+            ) {
                 const optionId = findAllowOptionId(record)
                 if (optionId) {
                     actions.autoApprovePermissionRequest(record, optionId)
