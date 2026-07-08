@@ -5709,6 +5709,7 @@ export type APIScopeObject =
     | 'llm_provider_key'
     | 'llm_skill'
     | 'logs'
+    | 'loop'
     | 'marketing_analytics'
     | 'mcp_analytics'
     | 'metrics'

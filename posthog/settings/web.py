@@ -622,6 +622,9 @@ SPECTACULAR_SETTINGS = {
         # Tracing's span-filter `type` and attribute-breakdown `breakdownType` share one
         # choice set (top-level column vs span attribute vs resource attribute).
         "SpanPropertyTypeEnum": ["span", "span_attribute", "span_resource_attribute"],
+        # LoopTriggerWrite.type and LoopPreviewRequest.trigger_type share the same
+        # schedule/github/api choice set — pin them to a single named enum.
+        "LoopTriggerTypeEnum": ["schedule", "github", "api"],
         "CustomPropertyDisplayTypeEnum": [
             "text",
             "number",
