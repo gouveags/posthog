@@ -25,7 +25,12 @@ import {
 import { type NewSurvey } from '../constants'
 import { InlineEditable } from './InlineEditable'
 
-const RATING_EMOJI_PREVIEW = ['\u{1F621}', '\u{1F641}', '\u{1F610}', '\u{1F642}', '\u{1F60D}']
+// Per-scale smiley lists mirroring posthog-js's emojiScaleLists, so each scale previews
+// the same sentiment ramp respondents will see. Thumbs (scale 2) render icons instead.
+const RATING_EMOJI_PREVIEW: Record<number, string[]> = {
+    3: ['\u{1F641}', '\u{1F610}', '\u{1F642}'],
+    5: ['\u{1F621}', '\u{1F641}', '\u{1F610}', '\u{1F642}', '\u{1F60D}'],
+}
 
 function getLuminance(color: string | undefined): number | null {
     if (!color) {
@@ -581,9 +586,16 @@ function RatingCanvas({
     // (rendered by posthog-js), so mirror that here instead of the smiley array —
     // and skip the bound-label row, exactly like the editor row does.
     const isThumbs = isThumbQuestion(question)
+    const emojis = RATING_EMOJI_PREVIEW[scale] ?? RATING_EMOJI_PREVIEW[5]
     return (
         <div className="rating-section">
-            <div className={question.display === 'emoji' ? 'rating-options-emoji' : 'rating-options-number'}>
+            <div
+                className={
+                    question.display === 'emoji'
+                        ? `rating-options-emoji${isThumbs ? ' rating-options-emoji-2' : ''}`
+                        : 'rating-options-number'
+                }
+            >
                 {Array.from({ length }, (_, idx) => {
                     const value = scale === 10 ? idx : idx + 1
                     return (
@@ -602,7 +614,7 @@ function RatingCanvas({
                                     <IconThumbsDown />
                                 )
                             ) : question.display === 'emoji' ? (
-                                RATING_EMOJI_PREVIEW[idx] || RATING_EMOJI_PREVIEW[3]
+                                (emojis[idx] ?? emojis[emojis.length - 1])
                             ) : (
                                 value
                             )}

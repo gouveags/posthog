@@ -357,6 +357,12 @@ body.PostHogHostedSurvey {
     justify-content: space-between;
 }
 
+/* Two-option (thumbs) ratings sit together instead of pinned to the card edges.
+   posthog-js sets this too, but its selector loses to the scoped rule above. */
+.PostHogHostedSurvey .rating-options-emoji-2 {
+    justify-content: space-around;
+}
+
 .PostHogHostedSurvey .ratings-emoji {
     min-width: 2.75rem;
     min-height: 2.75rem;
