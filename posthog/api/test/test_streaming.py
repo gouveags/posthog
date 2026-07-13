@@ -286,6 +286,28 @@ class TestSSEConcurrencyCap:
             assert isinstance(readmitted, StreamingHttpResponse)
             readmitted.close()
 
+    def test_slot_deferred_under_lock_contention_is_reclaimed_at_next_admission(self):
+        # GC can finalize a dropped reservation on a thread that already holds
+        # the cap lock, where __del__ must defer instead of block; the slot is
+        # then reclaimed by the drain at the next admission. If the deferral or
+        # the drain breaks, each such finalization permanently shrinks the cap
+        # until the process restarts.
+        with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=1):
+            response = sse_streaming_response(_gen(), endpoint="test_cap_deferred")
+            assert isinstance(response, StreamingHttpResponse)
+            streaming._stream_cap_lock.acquire()
+            try:
+                del response
+                gc.collect()
+                # The lock was contended, so the slot cannot be freed yet.
+                assert streaming._active_stream_count == 1
+            finally:
+                streaming._stream_cap_lock.release()
+            readmitted = sse_streaming_response(_gen(), endpoint="test_cap_deferred")
+            assert isinstance(readmitted, StreamingHttpResponse)
+            readmitted.close()
+            assert streaming._active_stream_count == 0
+
     def test_slot_released_when_building_the_response_fails(self):
         # An exception between reserving the slot and returning the response
         # (here: a DB error while releasing request connections) must release
