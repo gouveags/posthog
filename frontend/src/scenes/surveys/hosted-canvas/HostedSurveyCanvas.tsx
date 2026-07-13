@@ -25,8 +25,7 @@ import {
 import { type NewSurvey } from '../constants'
 import { InlineEditable } from './InlineEditable'
 
-// Per-scale smiley lists mirroring posthog-js's emojiScaleLists, so each scale previews
-// the same sentiment ramp respondents will see. Thumbs (scale 2) render icons instead.
+// Per-scale lists mirroring posthog-js emojiScaleLists; scale 2 (thumbs) renders icons instead.
 const RATING_EMOJI_PREVIEW: Record<number, string[]> = {
     3: ['\u{1F641}', '\u{1F610}', '\u{1F642}'],
     5: ['\u{1F621}', '\u{1F641}', '\u{1F610}', '\u{1F642}', '\u{1F60D}'],
@@ -582,12 +581,8 @@ function RatingCanvas({
 }): JSX.Element {
     const scale = question.scale
     const length = scale === 10 ? 11 : scale
-    // A 2-point emoji rating is a binary thumbs up / thumbs down in the live survey
-    // (rendered by posthog-js), so mirror that here instead of the smiley array —
-    // and skip the bound-label row, exactly like the editor row does.
     const isThumbs = isThumbQuestion(question)
-    // Emoji display is only offered for scales 2/3/5 (see SCALE_OPTIONS.EMOJI in constants.tsx),
-    // so the `?? RATING_EMOJI_PREVIEW[5]` fallback is defensive and not reachable from the editor.
+    // Emoji display is UI-restricted to scales 2/3/5; the [5] fallback is defensive.
     const emojis = RATING_EMOJI_PREVIEW[scale] ?? RATING_EMOJI_PREVIEW[5]
     return (
         <div className="rating-section">
@@ -609,8 +604,7 @@ function RatingCanvas({
                             aria-hidden
                         >
                             {isThumbs ? (
-                                // value 1 = thumbs up (positive), value 2 = thumbs down — the response
-                                // mapping posthog-js and the results UI key on, so drive off value not idx.
+                                // value 1 = thumbs up, 2 = thumbs down (the stored response mapping).
                                 value === 1 ? (
                                     <IconThumbsUp />
                                 ) : (
