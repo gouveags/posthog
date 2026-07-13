@@ -1,21 +1,39 @@
 import asyncio
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Iterator
 from http import HTTPStatus
 from typing import cast
 
+import pytest
 from unittest import mock
 
 from django.http import StreamingHttpResponse
 from django.http.response import HttpResponseBase
 from django.test import override_settings
 
+from parameterized import parameterized
 from prometheus_client import REGISTRY
 
-from posthog.api.streaming import _instrument_stream, sse_streaming_response, streaming_response
+from posthog.api import streaming
+from posthog.api.streaming import (
+    _instrument_stream,
+    _try_reserve_stream_slot,
+    sse_streaming_response,
+    streaming_response,
+)
 
 
 def _gen() -> Iterator[bytes]:
     yield b"data: hello\n\n"
+
+
+async def _agen() -> AsyncIterator[bytes]:
+    yield b"data: hello\n\n"
+
+
+def _reserve_slot() -> streaming._StreamSlotReservation:
+    reservation = _try_reserve_stream_slot()
+    assert reservation is not None
+    return reservation
 
 
 class TestSSEStreamingResponse:
@@ -129,14 +147,15 @@ class TestSSEStreamMetrics:
             while True:
                 yield b": ping\n\n"
 
-        # Django registers the instrumented iterator itself as the response's
-        # resource closer, so closing it directly is the disconnect path — the
-        # outer streaming_content wrapper does not propagate aclose() eagerly.
-        stream = _instrument_stream(endless(), "test_async_disconnect")
-        assert isinstance(stream, AsyncIterator)
-        await stream.__anext__()
+        # An abandoned async stream is aclosed by the event loop's async
+        # generator finalizer, not by response.close() (Django's resource
+        # closers are sync-only); drive that aclose() path directly.
+        stream = _instrument_stream(endless(), "test_async_disconnect", _reserve_slot())
+        assert isinstance(stream, AsyncIterable)
+        inner = cast(AsyncGenerator[bytes], aiter(stream))
+        await inner.__anext__()
         assert _open_connections("test_async_disconnect") == 1.0
-        await stream.aclose()  # type: ignore[attr-defined]
+        await inner.aclose()
         assert _open_connections("test_async_disconnect") == 0.0
         assert _closed_total("test_async_disconnect", "client_disconnect") == 1.0
 
@@ -159,8 +178,8 @@ class TestSSEAsyncCancellation:
             yield b": ping\n\n"
             await asyncio.Event().wait()  # park forever; cancellation lands here
 
-        stream = _instrument_stream(blocking(), "test_async_cancel")
-        assert isinstance(stream, AsyncIterator)
+        stream = _instrument_stream(blocking(), "test_async_cancel", _reserve_slot())
+        assert isinstance(stream, AsyncIterable)
 
         async def consume():
             async for _ in stream:
@@ -181,27 +200,34 @@ class TestSSEAsyncCancellation:
 
 class TestSSEConcurrencyCap:
     # Admission control is the guard against stream pile-up taking a process
-    # down; these tests pin the reject/admit boundary and that capacity is
-    # released when streams end.
+    # down; these tests pin the reject/admit boundary and that every afterlife
+    # of an admitted response releases its slot exactly once.
+
+    @pytest.fixture(autouse=True)
+    def _isolated_slot_count(self):
+        # The count is module-global: give each test a zero baseline and put
+        # the previous value back so a leak here cannot cascade into other tests.
+        with mock.patch.object(streaming, "_active_stream_count", 0):
+            yield
 
     def test_over_cap_rejects_with_503_and_jittered_retry_after(self):
-        def endless() -> Iterator[bytes]:
-            while True:
-                yield b": ping\n\n"
-
+        # The slot is reserved at admission, before any iterator is pulled:
+        # two requests admitted back to back must not both pass the cap check.
         with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=1):
-            admitted = sse_streaming_response(endless(), endpoint="test_cap")
+            admitted = sse_streaming_response(_gen(), endpoint="test_cap")
             assert isinstance(admitted, StreamingHttpResponse)
-            next(_sync_content(admitted))  # occupy the only slot
             try:
                 rejected = sse_streaming_response(_gen(), endpoint="test_cap")
                 assert rejected.status_code == HTTPStatus.SERVICE_UNAVAILABLE
                 assert not isinstance(rejected, StreamingHttpResponse)
                 assert 15 <= int(rejected.headers["Retry-After"]) < 45
+                # A rejection holds no slot, so it must not touch the count.
+                assert streaming._active_stream_count == 1
             finally:
                 # Always release the slot: a failed assertion must not leak the
                 # active-stream count into other tests.
                 admitted.close()
+            assert streaming._active_stream_count == 0
 
     def test_capacity_frees_up_when_a_stream_closes(self):
         def endless() -> Iterator[bytes]:
@@ -216,6 +242,32 @@ class TestSSEConcurrencyCap:
             second = sse_streaming_response(_gen(), endpoint="test_cap_release")
             assert isinstance(second, StreamingHttpResponse)
             assert b"".join(_sync_content(second)) == b"data: hello\n\n"
+
+    @parameterized.expand([("sync", _gen), ("async", _agen)])
+    def test_closing_a_never_consumed_response_releases_the_slot(self, _name, make_stream):
+        # Closing a never-started generator skips its finally, so this release
+        # rides on the response's resource closer; if that wiring breaks,
+        # every response abandoned before its first chunk leaks capacity.
+        with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=1):
+            first = sse_streaming_response(make_stream(), endpoint="test_cap_unconsumed")
+            assert isinstance(first, StreamingHttpResponse)
+            assert streaming._active_stream_count == 1
+            first.close()
+            assert streaming._active_stream_count == 0
+            second = sse_streaming_response(_gen(), endpoint="test_cap_unconsumed")
+            assert isinstance(second, StreamingHttpResponse)
+            second.close()
+
+    def test_consumed_then_closed_response_releases_only_once(self):
+        # A double release would drive the count negative and let the cap
+        # admit unbounded streams.
+        with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=1):
+            response = sse_streaming_response(_gen(), endpoint="test_cap_once")
+            assert isinstance(response, StreamingHttpResponse)
+            assert b"".join(_sync_content(response)) == b"data: hello\n\n"
+            assert streaming._active_stream_count == 0
+            response.close()
+            assert streaming._active_stream_count == 0
 
     def test_cap_of_zero_rejects_everything(self):
         with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=0):

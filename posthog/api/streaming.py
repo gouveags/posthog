@@ -1,7 +1,8 @@
 import time
 import random
 import asyncio
-from collections.abc import AsyncIterable, AsyncIterator, Iterable, Iterator
+import threading
+from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Generator, Iterable, Iterator
 from http import HTTPStatus
 
 from django.conf import settings
@@ -56,10 +57,13 @@ SSE_REJECTED_OVER_CAP_COUNTER = Counter(
     labelnames=["endpoint"],
 )
 
-# Per-process count of streams currently being consumed, kept in step with the
-# open-connections gauge (incremented at first pull, decremented on close).
-# Plain int mutation is safe here: both servers we run mutate it from a single
-# event loop per process, and the GIL covers the WSGI fallback.
+# Per-process count of admitted streams: a slot is reserved under the lock
+# before the response leaves the view and released exactly once per stream,
+# so parallel admissions cannot race past the cap. The lock guards only the
+# check-and-increment and the release, never a yield or await. This counts
+# reservations; the gauge and counters above keep counting streams that
+# actually started being consumed.
+_stream_cap_lock = threading.Lock()
 _active_stream_count = 0
 
 # Rejected clients get "come back in base + [0, jitter) seconds" so a burst that
@@ -69,23 +73,46 @@ _RETRY_AFTER_JITTER_SECONDS = 30
 
 
 def _record_stream_open(endpoint: str) -> None:
-    global _active_stream_count
-    _active_stream_count += 1
     SSE_STREAM_OPENED_COUNTER.labels(endpoint=endpoint).inc()
     SSE_OPEN_CONNECTIONS_GAUGE.labels(endpoint=endpoint).inc()
 
 
 def _record_stream_close(endpoint: str, outcome: str, started_at: float) -> None:
-    global _active_stream_count
-    _active_stream_count -= 1
     SSE_OPEN_CONNECTIONS_GAUGE.labels(endpoint=endpoint).dec()
     SSE_STREAM_CLOSED_COUNTER.labels(endpoint=endpoint, outcome=outcome).inc()
     SSE_STREAM_DURATION_HISTOGRAM.labels(endpoint=endpoint).observe(time.monotonic() - started_at)
 
 
-def _over_stream_cap() -> bool:
+class _StreamSlotReservation:
+    """One admitted slot against the per-process stream cap.
+
+    ``release`` is idempotent: both afterlives of a response call it (the
+    instrumented iterator's ``finally`` when the stream ran, the response's
+    resource closer when it never did) and only the first call frees the slot.
+    """
+
+    __slots__ = ("_released",)
+
+    def __init__(self) -> None:
+        self._released = False
+
+    def release(self) -> None:
+        global _active_stream_count
+        with _stream_cap_lock:
+            if self._released:
+                return
+            self._released = True
+            _active_stream_count -= 1
+
+
+def _try_reserve_stream_slot() -> _StreamSlotReservation | None:
+    global _active_stream_count
     cap = settings.SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS
-    return cap is not None and _active_stream_count >= cap
+    with _stream_cap_lock:
+        if cap is not None and _active_stream_count >= cap:
+            return None
+        _active_stream_count += 1
+    return _StreamSlotReservation()
 
 
 def _stream_cap_rejection(endpoint: str) -> HttpResponse:
@@ -97,8 +124,10 @@ def _stream_cap_rejection(endpoint: str) -> HttpResponse:
     )
 
 
-async def _instrumented_aiter(stream: AsyncIterable[bytes | str], endpoint: str) -> AsyncIterator[bytes | str]:
-    """Pass chunks through untouched, tracking open count, outcome, and duration.
+async def _instrumented_aiter(
+    stream: AsyncIterable[bytes | str], endpoint: str, reservation: _StreamSlotReservation
+) -> AsyncGenerator[bytes | str]:
+    """Pass chunks through untouched, tracking the open gauge, outcome, and duration.
 
     Metric work happens only at stream start and end — nothing is added per
     chunk. A client disconnect surfaces here as cancellation of the generator
@@ -120,9 +149,12 @@ async def _instrumented_aiter(stream: AsyncIterable[bytes | str], endpoint: str)
         raise
     finally:
         _record_stream_close(endpoint, outcome, started_at)
+        reservation.release()
 
 
-def _instrumented_iter(stream: Iterable[bytes | str], endpoint: str) -> Iterator[bytes | str]:
+def _instrumented_iter(
+    stream: Iterable[bytes | str], endpoint: str, reservation: _StreamSlotReservation
+) -> Generator[bytes | str]:
     _record_stream_open(endpoint)
     started_at = time.monotonic()
     outcome = "completed"
@@ -136,12 +168,57 @@ def _instrumented_iter(stream: Iterable[bytes | str], endpoint: str) -> Iterator
         raise
     finally:
         _record_stream_close(endpoint, outcome, started_at)
+        reservation.release()
 
 
-def _instrument_stream(stream: StreamContent, endpoint: str) -> StreamContent:
+class _ReservedSyncStream:
+    """Ties the cap reservation to response cleanup for a sync stream.
+
+    ``StreamingHttpResponse`` registers ``close`` as a resource closer and
+    Django always calls ``response.close()`` (WSGI servers per spec, the ASGI
+    handler explicitly). Closing a generator whose body never started skips
+    its ``finally``, so this wrapper, not the generator, is what guarantees a
+    never-consumed response still releases its slot.
+    """
+
+    def __init__(self, iterator: Generator[bytes | str], reservation: _StreamSlotReservation) -> None:
+        self._iterator = iterator
+        self._reservation = reservation
+
+    def __iter__(self) -> Iterator[bytes | str]:
+        return self._iterator
+
+    def close(self) -> None:
+        self._iterator.close()
+        self._reservation.release()
+
+
+class _ReservedAsyncStream:
+    """Async counterpart of ``_ReservedSyncStream``.
+
+    Deliberately has no ``__iter__`` so ``StreamingHttpResponse`` takes its
+    async path. The closer stays sync because Django invokes resource closers
+    synchronously; it cannot unwind a started async generator, but a started
+    generator already releases in its ``finally`` (the ASGI handler cancels it
+    on disconnect, the event loop finalizer closes it if abandoned), so only
+    the never-started case needs covering here.
+    """
+
+    def __init__(self, aiterator: AsyncGenerator[bytes | str], reservation: _StreamSlotReservation) -> None:
+        self._aiterator = aiterator
+        self._reservation = reservation
+
+    def __aiter__(self) -> AsyncIterator[bytes | str]:
+        return self._aiterator
+
+    def close(self) -> None:
+        self._reservation.release()
+
+
+def _instrument_stream(stream: StreamContent, endpoint: str, reservation: _StreamSlotReservation) -> StreamContent:
     if isinstance(stream, AsyncIterable):
-        return _instrumented_aiter(stream, endpoint)
-    return _instrumented_iter(stream, endpoint)
+        return _ReservedAsyncStream(_instrumented_aiter(stream, endpoint, reservation), reservation)
+    return _ReservedSyncStream(_instrumented_iter(stream, endpoint, reservation), reservation)
 
 
 def _release_request_connections() -> None:
@@ -232,13 +309,15 @@ def sse_streaming_response(
     and the client gets ``503`` with a jittered ``Retry-After``. ``EventSource``
     treats that as transient and reconnects later, so overload degrades into
     delayed reconnects instead of pinned processes and starved health probes.
-    The check is advisory (concurrent admissions can briefly overshoot the cap);
-    its job is stopping unbounded pile-up, not enforcing an exact ceiling.
+    A slot is reserved atomically before the response is returned, so parallel
+    admissions cannot overshoot the cap; the slot is released when the stream
+    ends or when a never-consumed response is closed.
     """
-    if _over_stream_cap():
+    reservation = _try_reserve_stream_slot()
+    if reservation is None:
         return _stream_cap_rejection(endpoint)
     return streaming_response(
-        _instrument_stream(stream, endpoint),
+        _instrument_stream(stream, endpoint, reservation),
         content_type="text/event-stream",
         status=status,
         headers={**_SSE_DEFAULT_HEADERS, **(headers or {})},
