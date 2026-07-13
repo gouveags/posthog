@@ -52,8 +52,8 @@ export function PlayerSidebarExperimentsSection(): JSX.Element | null {
                         <Tooltip
                             title={
                                 item.multiple_variants
-                                    ? `This session saw multiple variants (${item.variants_seen.join(', ')}) of ${item.experiment_name}. Flag evaluation may differ from the experiment's exposure criteria.`
-                                    : `This session saw variant "${item.variant}" of ${item.experiment_name}. Flag evaluation may differ from the experiment's exposure criteria.`
+                                    ? `This session saw multiple variants (${item.variants_seen.join(', ')}) of ${item.experiment_name}. The experiment analysis counts exposure per person, which can differ from a single session.`
+                                    : `This session saw variant "${item.variant}" of ${item.experiment_name}. The experiment analysis counts exposure per person, which can differ from a single session.`
                             }
                         >
                             <LemonTag type={item.multiple_variants ? 'warning' : 'default'}>
@@ -61,18 +61,18 @@ export function PlayerSidebarExperimentsSection(): JSX.Element | null {
                             </LemonTag>
                         </Tooltip>
                     </div>
-                    {item.first_flag_evaluation_timestamp ? (
+                    {item.first_exposure_timestamp ? (
                         <LemonButton
                             size="xsmall"
                             type="tertiary"
-                            onClick={() => seekToTimestamp(dayjs(item.first_flag_evaluation_timestamp).valueOf())}
-                            tooltip={`Seeks to when this session first evaluated the flag to "${item.variant}". For experiments with a custom exposure event, the counted exposure may be a later, different event.`}
-                            data-attr="replay-experiment-context-jump-to-variant-assignment"
+                            onClick={() => seekToTimestamp(dayjs(item.first_exposure_timestamp).valueOf())}
+                            tooltip={`Seeks to the first event in this session matching the experiment's exposure criteria. The experiment may count the person's first exposure from an earlier session.`}
+                            data-attr="replay-experiment-context-jump-to-first-exposure"
                         >
-                            Jump to variant assignment
+                            Jump to first exposure
                         </LemonButton>
                     ) : (
-                        <span className="text-secondary text-xs">assignment carried over from an earlier session</span>
+                        <span className="text-secondary text-xs">no exposure event in this session</span>
                     )}
                 </div>
             ))}

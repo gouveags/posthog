@@ -41,8 +41,8 @@ export function PlayerMetaExperimentTags(): JSX.Element | null {
                     key={item.experiment_id}
                     title={
                         item.multiple_variants
-                            ? `This session saw multiple variants (${item.variants_seen.join(', ')}) of ${item.experiment_name}. Flag evaluation may differ from the experiment's exposure criteria.`
-                            : `This session saw variant "${item.variant}" of ${item.experiment_name}. Flag evaluation may differ from the experiment's exposure criteria.`
+                            ? `This session saw multiple variants (${item.variants_seen.join(', ')}) of ${item.experiment_name}. The experiment analysis counts exposure per person, which can differ from a single session.`
+                            : `This session saw variant "${item.variant}" of ${item.experiment_name}. The experiment analysis counts exposure per person, which can differ from a single session.`
                     }
                 >
                     <LemonTag
