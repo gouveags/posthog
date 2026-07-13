@@ -586,6 +586,8 @@ function RatingCanvas({
     // (rendered by posthog-js), so mirror that here instead of the smiley array —
     // and skip the bound-label row, exactly like the editor row does.
     const isThumbs = isThumbQuestion(question)
+    // Emoji display is only offered for scales 2/3/5 (see SCALE_OPTIONS.EMOJI in constants.tsx),
+    // so the `?? RATING_EMOJI_PREVIEW[5]` fallback is defensive and not reachable from the editor.
     const emojis = RATING_EMOJI_PREVIEW[scale] ?? RATING_EMOJI_PREVIEW[5]
     return (
         <div className="rating-section">
