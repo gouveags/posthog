@@ -1,3 +1,4 @@
+import gc
 import asyncio
 from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Iterator
 from http import HTTPStatus
@@ -149,7 +150,11 @@ class TestSSEStreamMetrics:
 
         # An abandoned async stream is aclosed by the event loop's async
         # generator finalizer, not by response.close() (Django's resource
-        # closers are sync-only); drive that aclose() path directly.
+        # closers are sync-only); drive that aclose() path directly. This is
+        # the only release on that path, so pin the slot count too, not just
+        # the metrics (baseline-relative: this test runs outside the
+        # slot-isolation fixture).
+        baseline = streaming._active_stream_count
         stream = _instrument_stream(endless(), "test_async_disconnect", _reserve_slot())
         assert isinstance(stream, AsyncIterable)
         inner = cast(AsyncGenerator[bytes], aiter(stream))
@@ -158,6 +163,7 @@ class TestSSEStreamMetrics:
         await inner.aclose()
         assert _open_connections("test_async_disconnect") == 0.0
         assert _closed_total("test_async_disconnect", "client_disconnect") == 1.0
+        assert streaming._active_stream_count == baseline
 
 
 class TestStreamingResponse:
@@ -178,6 +184,10 @@ class TestSSEAsyncCancellation:
             yield b": ping\n\n"
             await asyncio.Event().wait()  # park forever; cancellation lands here
 
+        # ASGI cancellation is a path where response.close() never runs, so the
+        # generator's finally is the only thing releasing the cap slot; pin it
+        # (baseline-relative: this test runs outside the slot-isolation fixture).
+        baseline = streaming._active_stream_count
         stream = _instrument_stream(blocking(), "test_async_cancel", _reserve_slot())
         assert isinstance(stream, AsyncIterable)
 
@@ -196,6 +206,7 @@ class TestSSEAsyncCancellation:
         assert _open_connections("test_async_cancel") == 0.0
         assert _closed_total("test_async_cancel", "client_disconnect") == 1.0
         assert _closed_total("test_async_cancel", "error") == 0.0
+        assert streaming._active_stream_count == baseline
 
 
 class TestSSEConcurrencyCap:
@@ -257,6 +268,36 @@ class TestSSEConcurrencyCap:
             second = sse_streaming_response(_gen(), endpoint="test_cap_unconsumed")
             assert isinstance(second, StreamingHttpResponse)
             second.close()
+
+    @parameterized.expand([("sync", _gen), ("async", _agen)])
+    def test_dropped_response_releases_the_slot_via_gc(self, _name, make_stream):
+        # Django can drop a streaming response without ever calling close():
+        # the ASGI handler skips it when the client disconnects during the
+        # response-middleware phase, and exception-converting middleware swaps
+        # in a 500 and abandons the original. Each occurrence must not consume
+        # a slot until the process restarts.
+        with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=1):
+            response = sse_streaming_response(make_stream(), endpoint="test_cap_gc")
+            assert isinstance(response, StreamingHttpResponse)
+            del response
+            gc.collect()
+            assert streaming._active_stream_count == 0
+            readmitted = sse_streaming_response(_gen(), endpoint="test_cap_gc")
+            assert isinstance(readmitted, StreamingHttpResponse)
+            readmitted.close()
+
+    def test_slot_released_when_building_the_response_fails(self):
+        # An exception between reserving the slot and returning the response
+        # (here: a DB error while releasing request connections) must release
+        # eagerly, not wait for GC. Keeping the traceback alive holds the
+        # reservation alive, so this catches a dropped except-and-release.
+        with override_settings(SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS=1):
+            with mock.patch("posthog.api.streaming.connections") as connections:
+                connections.all.side_effect = RuntimeError("db went away")
+                with pytest.raises(RuntimeError) as excinfo:
+                    sse_streaming_response(_gen(), endpoint="test_cap_build_error")
+            assert streaming._active_stream_count == 0
+            del excinfo
 
     def test_consumed_then_closed_response_releases_only_once(self):
         # A double release would drive the count negative and let the cap

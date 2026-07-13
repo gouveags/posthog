@@ -1106,8 +1106,10 @@ WEB_ANALYTICS_LAZY_PRECOMPUTE_UNRESTRICTED_TEAM_IDS: list[int] = [
 
 # Admission control for long-lived SSE streams: the maximum number of streams
 # one worker process serves concurrently. Above the cap, sse_streaming_response()
-# returns 503 with a jittered Retry-After instead of opening the stream —
-# EventSource treats that as retryable, so overload degrades into delayed
-# reconnects rather than pinned processes and starved health probes. 0 rejects
-# every stream (emergency lever).
+# returns 503 with a jittered Retry-After instead of opening the stream, keeping
+# processes unpinned and health probes responsive. Recovery depends on the
+# client: HTTP-level retriers honor Retry-After, but a native EventSource treats
+# any non-200 as fatal (readyState CLOSED, no auto-reconnect) and ignores the
+# header, so those consumers must reconnect from their onerror handler.
+# 0 rejects every stream (emergency lever).
 SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS = get_from_env("SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS", 500, type_cast=int)

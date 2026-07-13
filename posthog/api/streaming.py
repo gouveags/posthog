@@ -2,6 +2,7 @@ import time
 import random
 import asyncio
 import threading
+from collections import deque
 from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Generator, Iterable, Iterator
 from http import HTTPStatus
 
@@ -66,6 +67,12 @@ SSE_REJECTED_OVER_CAP_COUNTER = Counter(
 _stream_cap_lock = threading.Lock()
 _active_stream_count = 0
 
+# Slots freed by the GC backstop while the cap lock was unavailable. ``__del__``
+# can fire at any allocation point, including on a thread that already holds the
+# non-reentrant lock, so it must never block on it; ``deque.append`` is atomic,
+# and admission drains this queue under the lock.
+_deferred_slot_releases: deque[None] = deque()
+
 # Rejected clients get "come back in base + [0, jitter) seconds" so a burst that
 # hits the cap spreads its retries out instead of reconnecting in lockstep.
 _RETRY_AFTER_BASE_SECONDS = 15
@@ -89,6 +96,11 @@ class _StreamSlotReservation:
     ``release`` is idempotent: both afterlives of a response call it (the
     instrumented iterator's ``finally`` when the stream ran, the response's
     resource closer when it never did) and only the first call frees the slot.
+    ``__del__`` backstops responses dropped without ``close()`` at all (the
+    ASGI handler skips it when the client disconnects during the
+    response-middleware phase, and exception-converting middleware drops the
+    original response unclosed), which would otherwise leak the slot until the
+    process restarts.
     """
 
     __slots__ = ("_released",)
@@ -104,11 +116,32 @@ class _StreamSlotReservation:
             self._released = True
             _active_stream_count -= 1
 
+    def __del__(self) -> None:
+        # GC can run while this thread holds the cap lock, so never block on it
+        # here: decrement inline when the lock is free, otherwise defer to the
+        # queue the next admission drains. No lock guards the flag because an
+        # object being finalized has no other referents left to race with.
+        global _active_stream_count
+        if self._released:
+            return
+        if _stream_cap_lock.acquire(blocking=False):
+            try:
+                self._released = True
+                _active_stream_count -= 1
+            finally:
+                _stream_cap_lock.release()
+        else:
+            self._released = True
+            _deferred_slot_releases.append(None)
+
 
 def _try_reserve_stream_slot() -> _StreamSlotReservation | None:
     global _active_stream_count
     cap = settings.SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS
     with _stream_cap_lock:
+        while _deferred_slot_releases:
+            _deferred_slot_releases.popleft()
+            _active_stream_count -= 1
         if cap is not None and _active_stream_count >= cap:
             return None
         _active_stream_count += 1
@@ -174,11 +207,12 @@ def _instrumented_iter(
 class _ReservedSyncStream:
     """Ties the cap reservation to response cleanup for a sync stream.
 
-    ``StreamingHttpResponse`` registers ``close`` as a resource closer and
-    Django always calls ``response.close()`` (WSGI servers per spec, the ASGI
-    handler explicitly). Closing a generator whose body never started skips
-    its ``finally``, so this wrapper, not the generator, is what guarantees a
-    never-consumed response still releases its slot.
+    ``StreamingHttpResponse`` registers ``close`` as a resource closer, which
+    runs whenever Django closes the response (WSGI servers per spec, the ASGI
+    handler on the normal path). Closing a generator whose body never started
+    skips its ``finally``, so this wrapper, not the generator, is what releases
+    the slot for a never-consumed response. Responses Django drops without
+    calling ``close()`` at all fall through to the reservation's ``__del__``.
     """
 
     def __init__(self, iterator: Generator[bytes | str], reservation: _StreamSlotReservation) -> None:
@@ -306,19 +340,29 @@ def sse_streaming_response(
 
     Admission control: when this process is already serving
     ``SSE_MAX_CONCURRENT_STREAMS_PER_PROCESS`` streams, the stream is not opened
-    and the client gets ``503`` with a jittered ``Retry-After``. ``EventSource``
-    treats that as transient and reconnects later, so overload degrades into
-    delayed reconnects instead of pinned processes and starved health probes.
-    A slot is reserved atomically before the response is returned, so parallel
-    admissions cannot overshoot the cap; the slot is released when the stream
-    ends or when a never-consumed response is closed.
+    and the client gets ``503`` with a jittered ``Retry-After``. Beware that a
+    native ``EventSource`` treats any non-200 response as fatal (readyState
+    CLOSED, no auto-reconnect) and ignores ``Retry-After``; the jittered header
+    only spreads out clients that retry at the HTTP layer, so ``EventSource``
+    consumers must schedule their own reconnect from ``onerror`` to recover
+    from a rejection. A slot is reserved atomically before the response is
+    returned, so parallel admissions cannot overshoot the cap; the slot is
+    released when the stream ends, when a never-consumed response is closed,
+    or by a GC backstop when the response is dropped without being closed.
     """
     reservation = _try_reserve_stream_slot()
     if reservation is None:
         return _stream_cap_rejection(endpoint)
-    return streaming_response(
-        _instrument_stream(stream, endpoint, reservation),
-        content_type="text/event-stream",
-        status=status,
-        headers={**_SSE_DEFAULT_HEADERS, **(headers or {})},
-    )
+    try:
+        return streaming_response(
+            _instrument_stream(stream, endpoint, reservation),
+            content_type="text/event-stream",
+            status=status,
+            headers={**_SSE_DEFAULT_HEADERS, **(headers or {})},
+        )
+    except BaseException:
+        # Nothing owns the slot until the response exists: a failure here (a DB
+        # error while releasing connections, a bad caller-supplied header) must
+        # not strand the reservation until GC gets to it.
+        reservation.release()
+        raise
