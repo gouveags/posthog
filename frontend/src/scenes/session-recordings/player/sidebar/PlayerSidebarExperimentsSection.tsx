@@ -66,7 +66,7 @@ export function PlayerSidebarExperimentsSection(): JSX.Element | null {
                             size="xsmall"
                             type="tertiary"
                             onClick={() => seekToTimestamp(dayjs(item.first_exposure_timestamp).valueOf())}
-                            tooltip={`Seeks to the first event in this session matching the experiment's exposure criteria. The experiment may count the person's first exposure from an earlier session.`}
+                            tooltip="Seeks to the first event in this session matching the experiment's exposure criteria. The experiment may count the person's first exposure from an earlier session."
                             data-attr="replay-experiment-context-jump-to-first-exposure"
                         >
                             Jump to first exposure
