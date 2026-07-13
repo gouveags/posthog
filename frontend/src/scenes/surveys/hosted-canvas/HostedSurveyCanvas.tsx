@@ -609,8 +609,9 @@ function RatingCanvas({
                             aria-hidden
                         >
                             {isThumbs ? (
-                                // value 1 renders thumbs up, value 2 thumbs down — matches the response mapping.
-                                idx === 0 ? (
+                                // value 1 = thumbs up (positive), value 2 = thumbs down — the response
+                                // mapping posthog-js and the results UI key on, so drive off value not idx.
+                                value === 1 ? (
                                     <IconThumbsUp />
                                 ) : (
                                     <IconThumbsDown />

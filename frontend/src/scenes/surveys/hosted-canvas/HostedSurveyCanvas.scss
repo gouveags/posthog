@@ -52,7 +52,8 @@
     // Thumbs up/down rating (2-point emoji scale) renders @posthog/icons SVGs
     // rather than text glyphs — center them in the round rating button and give
     // them a size that reads as an icon, mirroring the live posthog-js survey.
-    .ratings-emoji {
+    // Scoped to the 2-point row so 3-/5-point glyph buttons keep their default layout.
+    .rating-options-emoji-2 .ratings-emoji {
         display: inline-flex;
         align-items: center;
         justify-content: center;
