@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from django.conf import settings
+from django.http import StreamingHttpResponse
 from django.http.response import HttpResponseBase
 
 import structlog
@@ -326,10 +327,6 @@ class WizardSessionViewSet(TeamAndOrgViewSetMixin, viewsets.GenericViewSet):
         if not workflow_id:
             raise ValidationError({"detail": "workflow_id is required."})
 
-        # The generator is `async def` — WSGI can't consume an async iterator.
-        if getattr(settings, "SERVER_GATEWAY_INTERFACE", "ASGI") != "ASGI":
-            raise RuntimeError("wizard_sessions.stream requires ASGI.")
-
         generator = _wizard_session_event_stream(
             team_id=self.team_id,
             workflow_id=workflow_id,
@@ -339,13 +336,24 @@ class WizardSessionViewSet(TeamAndOrgViewSetMixin, viewsets.GenericViewSet):
         # Releases the request-thread DB connection (auth, team resolution) before
         # the long-lived stream begins — see sse_streaming_response.
         # The killswitch 204 tells EventSource to stop reconnecting, severing the
-        # self-reconnect loop for already-open tabs.
-        return sse_streaming_response(
+        # self-reconnect loop for already-open tabs; it must answer even when the
+        # stream itself could not be served, so it is decided before the gateway
+        # check below.
+        response = sse_streaming_response(
             generator,
             endpoint="wizard_session",
             killswitch_flag=WIZARD_SYNC_KILLSWITCH_FLAG,
             killswitch_distinct_id=self._killswitch_distinct_id(request),
         )
+        # The generator is `async def` — WSGI can't consume an async iterator.
+        # Close the unserved stream so its admission slot is released eagerly.
+        if (
+            isinstance(response, StreamingHttpResponse)
+            and getattr(settings, "SERVER_GATEWAY_INTERFACE", "ASGI") != "ASGI"
+        ):
+            response.close()
+            raise RuntimeError("wizard_sessions.stream requires ASGI.")
+        return response
 
 
 async def _wizard_session_event_stream(
