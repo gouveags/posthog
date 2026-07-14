@@ -42,7 +42,7 @@ from posthog.clickhouse.logs.logs32 import TABLE_NAME as LOGS_LOCAL_TABLE
 from posthog.clickhouse.query_tagging import tag_queries
 from posthog.cloud_utils import TEST_clear_instance_license_cache
 from posthog.hogql_queries.events_query_runner import EventsQueryRunner
-from posthog.models import Organization, Team
+from posthog.models import Organization, Project, Team
 from posthog.models.app_metrics2.sql import TRUNCATE_APP_METRICS2_TABLE_SQL
 from posthog.models.event.util import create_event
 from posthog.models.group.util import create_group
@@ -5119,8 +5119,11 @@ class TestQuerySplitting(ClickhouseDestroyTablesMixin, ClickhouseTestMixin, Test
         super().setUp()
         materialize("events", "$exception_values")
 
-        # Clear existing Django data
+        # Clear existing Django data. Projects explicitly too: team creation
+        # auto-creates a project with the team's pk, so a project 2 left over
+        # from earlier tests in the run collides with the analytics team below.
         Team.objects.all().delete()
+        Project.objects.all().delete()
         Organization.objects.all().delete()
 
         # Create analytics team for AI credits tests (team 2 for US region). The explicit
