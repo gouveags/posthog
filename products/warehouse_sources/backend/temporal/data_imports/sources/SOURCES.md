@@ -70,6 +70,7 @@ the row lists both.
 | awin                      | HTTP                        | requests                                                        | ✅                          |
 | azure_devops              | HTTP                        | requests                                                        | ✅                          |
 | bamboohr                  | HTTP                        | requests                                                        | ✅                          |
+| baseten                   | HTTP                        | requests                                                        | ✅                          |
 | beamer                    | HTTP                        | requests                                                        | ✅                          |
 | bigmailer                 | HTTP                        | requests                                                        | ✅                          |
 | bigquery                  | HTTP + gRPC                 | google-cloud-bigquery + bigquery-storage                        | ✅ (HTTP + gRPC)            |
@@ -212,6 +213,7 @@ the row lists both.
 | hubspot                   | HTTP                        | requests                                                        | ✅                          |
 | hugging_face              | HTTP                        | requests                                                        | ✅                          |
 | huntr                     | HTTP                        | requests                                                        | ✅                          |
+| imagga                    | HTTP                        | requests                                                        | ✅                          |
 | incident_io               | HTTP                        | requests                                                        | ✅                          |
 | inflowinventory           | HTTP                        | requests                                                        | ✅                          |
 | insightly                 | HTTP                        | requests                                                        | ✅                          |
@@ -494,7 +496,6 @@ doesn't conflict with concurrent PRs.
 - babelforce
 - backblaze
 - basecamp
-- baseten
 - bigcommerce
 - bitly
 - box
@@ -610,7 +611,6 @@ doesn't conflict with concurrent PRs.
 - hyperspell
 - ikas
 - illumina_basespace
-- imagga
 - impact
 - infisical
 - infor_nexus
