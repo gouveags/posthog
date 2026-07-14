@@ -28,7 +28,7 @@ from products.tasks.backend.temporal.process_task.utils import (
     get_sandbox_ph_mcp_configs,
     get_task_run_credential_user,
     get_user_mcp_server_configs,
-    mark_mcp_token_issued,
+    mark_sandbox_mcp_session,
 )
 
 from .get_task_processing_context import TaskProcessingContext
@@ -164,6 +164,9 @@ class StartAgentServerOutput:
 @dataclass
 class _LaunchParams:
     mcp_configs: list[McpServerConfig]
+    # The user the boot-time credentials were minted for, recorded as the
+    # sandbox's initial session identity.
+    actor_user_id: int | None
     agentsh_domains: list[str] | None
     protected_base_branch: str | None
     event_ingest_token: str | None
@@ -275,6 +278,7 @@ def _prepare_launch(ctx: TaskProcessingContext, scopes: PosthogMcpScopes) -> _La
 
     return _LaunchParams(
         mcp_configs=mcp_configs,
+        actor_user_id=actor_user.id if actor_user else None,
         agentsh_domains=agentsh_domains,
         protected_base_branch=protected_base_branch,
         event_ingest_token=event_ingest_token,
@@ -316,10 +320,10 @@ def _invoke_start_agent_server(
             rtk_enabled=ctx.rtk_enabled,
         )
 
-        # Mark startup-time token issuance so follow-ups within the next
-        # 30m window skip the redundant refresh.
-        if params.mcp_configs:
-            mark_mcp_token_issued(ctx.run_id)
+        # Record the boot identity so same-actor follow-ups within the
+        # freshness window skip the redundant refresh.
+        if params.mcp_configs and params.actor_user_id is not None:
+            mark_sandbox_mcp_session(sandbox.id, params.actor_user_id)
 
         # Persist the effective rtk posture the agent launched with, so terminal
         # analytics can cohort runs by it (the state override alone misses the
