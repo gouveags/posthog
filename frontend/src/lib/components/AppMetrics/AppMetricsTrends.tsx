@@ -1,6 +1,6 @@
 import { SpinnerOverlay } from '@posthog/lemon-ui'
 
-import { LineGraph } from '~/queries/nodes/DataVisualization/Components/Charts/LineGraph'
+import { SqlChart } from '~/queries/nodes/DataVisualization/Components/Charts/SqlChart'
 import { AxisSeries } from '~/queries/nodes/DataVisualization/dataVisualizationLogic'
 import { ChartDisplayType } from '~/types'
 
@@ -23,7 +23,7 @@ export function AppMetricsTrends({
             ) : !appMetricsTrends ? (
                 <div className="flex-1 flex items-center justify-center">Missing</div>
             ) : (
-                <LineGraph
+                <SqlChart
                     className="p-2"
                     xData={{
                         column: {

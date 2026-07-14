@@ -4,7 +4,7 @@ import { getColorVar } from 'lib/colors'
 import { dayjs } from 'lib/dayjs'
 import { pluralize } from 'lib/utils/strings'
 
-import { LineGraph } from '~/queries/nodes/DataVisualization/Components/Charts/LineGraph'
+import { SqlChart } from '~/queries/nodes/DataVisualization/Components/Charts/SqlChart'
 import { ChartDisplayType } from '~/types'
 
 import { ExceptionVolumeBucket, getBucketOption } from './rateLimitConfigLogic'
@@ -141,7 +141,7 @@ export function RateLimitSimulationChart({
 
     return (
         <div className="h-80 border rounded">
-            <LineGraph
+            <SqlChart
                 className="h-full p-4"
                 xData={xData}
                 yData={yData}

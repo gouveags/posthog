@@ -5,7 +5,7 @@ import { LemonLabel, LemonSkeleton, SpinnerOverlay, Tooltip } from '@posthog/lem
 
 import { formatPercentageDiff, humanFriendlyNumber } from 'lib/utils/numbers'
 
-import { LineGraph } from '~/queries/nodes/DataVisualization/Components/Charts/LineGraph'
+import { SqlChart } from '~/queries/nodes/DataVisualization/Components/Charts/SqlChart'
 import { AxisSeries } from '~/queries/nodes/DataVisualization/dataVisualizationLogic'
 import { ChartDisplayType } from '~/types'
 
@@ -114,7 +114,7 @@ export function AppMetricSummary({
                             <LemonLabel>No data</LemonLabel>
                         </div>
                     ) : (
-                        <LineGraph
+                        <SqlChart
                             xData={{
                                 column: {
                                     name: 'date',

@@ -8,7 +8,7 @@ import { appMetricsLogic } from 'lib/components/AppMetrics/appMetricsLogic'
 import { IconOpenInApp } from 'lib/lemon-ui/icons'
 import { urls } from 'scenes/urls'
 
-import { LineGraph } from '~/queries/nodes/DataVisualization/Components/Charts/LineGraph'
+import { SqlChart } from '~/queries/nodes/DataVisualization/Components/Charts/SqlChart'
 import { AxisSeries } from '~/queries/nodes/DataVisualization/dataVisualizationLogic'
 import { ChartDisplayType } from '~/types'
 
@@ -107,7 +107,7 @@ export function HogFlowEditorPanelMetrics(): JSX.Element | null {
                                 <div className="text-muted">No data</div>
                             </div>
                         ) : (
-                            <LineGraph
+                            <SqlChart
                                 className="p-2"
                                 xData={{
                                     column: {

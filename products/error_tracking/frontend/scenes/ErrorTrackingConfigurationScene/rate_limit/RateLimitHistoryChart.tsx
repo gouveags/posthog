@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { getColorVar } from 'lib/colors'
 import { dayjs } from 'lib/dayjs'
 
-import { LineGraph } from '~/queries/nodes/DataVisualization/Components/Charts/LineGraph'
+import { SqlChart } from '~/queries/nodes/DataVisualization/Components/Charts/SqlChart'
 import { ChartDisplayType } from '~/types'
 
 import { getBucketOption, RateLimitHistoryBucket } from './rateLimitConfigLogic'
@@ -99,7 +99,7 @@ export function RateLimitHistoryChart({
 
     return (
         <div className="h-80 border rounded">
-            <LineGraph
+            <SqlChart
                 className="h-full p-4"
                 xData={xData}
                 yData={yData}
