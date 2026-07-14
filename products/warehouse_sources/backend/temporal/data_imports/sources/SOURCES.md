@@ -338,6 +338,7 @@ the row lists both.
 | retently                  | HTTP                        | requests                                                        | ✅                          |
 | revenuecat                | HTTP + Webhook              | requests + `WebhookSourceManager`                               | ✅ (pull) / ➖ (webhook)    |
 | rippling                  | HTTP                        | requests                                                        | ✅                          |
+| roark                     | HTTP                        | requests                                                        | ✅                          |
 | rocketlane                | HTTP                        | requests                                                        | ✅                          |
 | rollbar                   | HTTP                        | requests                                                        | ✅                          |
 | rootly                    | HTTP                        | requests                                                        | ✅                          |
@@ -749,7 +750,6 @@ doesn't conflict with concurrent PRs.
 - revolut_merchant
 - ringcentral
 - rki_covid
-- roark
 - rocket_chat
 - rocketlane
 - rss
