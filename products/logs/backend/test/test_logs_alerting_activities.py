@@ -509,7 +509,7 @@ class TestRunCohortQueryFallbackEndToEnd(ClickhouseTestMixin, APIBaseTest):
                 ]
             )
         ]
-        sync_execute("INSERT INTO logs FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
+        sync_execute("INSERT INTO logs_distributed FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
 
     def _make_alert(self, *, name: str, service: str) -> LogsAlertConfiguration:
         return LogsAlertConfiguration.objects.create(
@@ -1469,7 +1469,7 @@ class TestEvaluateSingleAlertEndToEnd(ClickhouseTestMixin, APIBaseTest):
             }
             for i in range(5)
         ]
-        sync_execute("INSERT INTO logs FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
+        sync_execute("INSERT INTO logs_distributed FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
 
         alert = self._make_alert(
             filters={"serviceNames": ["e2e_eval_test"]},
@@ -1499,7 +1499,7 @@ class TestEvaluateSingleAlertEndToEnd(ClickhouseTestMixin, APIBaseTest):
             }
             for i, ts in enumerate(timestamps)
         ]
-        sync_execute("INSERT INTO logs FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
+        sync_execute("INSERT INTO logs_distributed FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
 
     def _make_alert(self, **kwargs) -> LogsAlertConfiguration:
         defaults = {

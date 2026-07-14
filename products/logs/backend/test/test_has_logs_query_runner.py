@@ -27,7 +27,7 @@ class TestHasLogsQueryRunner(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -42,7 +42,7 @@ class TestHasLogsQueryRunner(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = 99999  # Different team
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -61,7 +61,7 @@ class TestHasLogsAPI(ClickhouseTestMixin, APIBaseTest):
 
     def test_has_logs_api_returns_false_when_no_logs(self):
         # Clean up any logs from previous tests
-        sync_execute(f"TRUNCATE TABLE IF EXISTS logs32")
+        sync_execute(f"TRUNCATE TABLE IF EXISTS logs34")
         cache.delete(f"team:{self.team.id}:has_logs")
 
         response = self.client.get(f"/api/projects/{self.team.id}/logs/has_logs")
@@ -75,7 +75,7 @@ class TestHasLogsAPI(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -98,7 +98,7 @@ class TestHasLogsAPI(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)

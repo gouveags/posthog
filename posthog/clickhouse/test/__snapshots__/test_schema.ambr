@@ -2823,7 +2823,7 @@
 # name: test_create_table_query[log_attributes_distributed]
   '''
   
-  CREATE TABLE IF NOT EXISTS posthog_test.log_attributes_distributed AS posthog_test.log_attributes ENGINE = Distributed('posthog_single_shard', 'posthog_test', 'log_attributes')
+  CREATE OR REPLACE TABLE posthog_test.log_attributes_distributed AS posthog_test.log_attributes3 ENGINE = Distributed('posthog_single_shard', 'posthog_test', 'log_attributes3')
   
   '''
 # ---
@@ -3353,13 +3353,6 @@
   
   '''
 # ---
-# name: test_create_table_query[logs]
-  '''
-  
-  CREATE TABLE IF NOT EXISTS posthog_test.logs AS posthog_test.logs32 ENGINE = Distributed('posthog_single_shard', 'posthog_test', 'logs32')
-  
-  '''
-# ---
 # name: test_create_table_query[logs_billing_metrics]
   '''
   
@@ -3391,7 +3384,7 @@
 # name: test_create_table_query[logs_distributed]
   '''
   
-  CREATE TABLE IF NOT EXISTS posthog_test.logs_distributed AS posthog_test.logs32 ENGINE = Distributed('posthog_single_shard', 'posthog_test', 'logs32')
+  CREATE OR REPLACE TABLE posthog_test.logs_distributed AS posthog_test.logs34 ENGINE = Distributed('posthog_single_shard', 'posthog_test', 'logs34')
   
   '''
 # ---

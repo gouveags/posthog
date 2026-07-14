@@ -1640,7 +1640,7 @@ class TestSimulateEvaluatorParity(ClickhouseTestMixin, APIBaseTest):
                     )
                 )
         if rows:
-            sync_execute("INSERT INTO logs FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
+            sync_execute("INSERT INTO logs_distributed FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
 
     def setUp(self) -> None:
         super().setUp()
@@ -1753,7 +1753,7 @@ class TestSimulateEvaluatorLifecycleParity(ClickhouseTestMixin, APIBaseTest):
                     )
                 )
         if rows:
-            sync_execute("INSERT INTO logs FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
+            sync_execute("INSERT INTO logs_distributed FORMAT JSONEachRow\n" + "\n".join(json.dumps(r) for r in rows))
 
     def _make_alert(self, **overrides: object) -> LogsAlertConfiguration:
         from products.logs.backend.alert_state_machine import AlertState

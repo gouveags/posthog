@@ -23,7 +23,7 @@ class TestLogValuesAttributesTimezones(ClickhouseTestMixin, APIBaseTest):
                 log_item["team_id"] = cls.team.id
                 sql += json.dumps(log_item) + "\n"
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {sql}
             """)
@@ -339,7 +339,7 @@ class TestLogAttributesIlikeEscaping(ClickhouseTestMixin, APIBaseTest):
                 )
                 + "\n"
             )
-        sync_execute(f"INSERT INTO logs FORMAT JSONEachRow\n{sql}")
+        sync_execute(f"INSERT INTO logs_distributed FORMAT JSONEachRow\n{sql}")
 
     def _attributes(self, params: dict) -> list[dict]:
         query_params = {"dateRange": self.DATE_RANGE, **params}

@@ -23,15 +23,15 @@ class TestLogsExcludeAttributes(ClickhouseTestMixin, APIBaseTest):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        sync_execute("TRUNCATE TABLE IF EXISTS logs32")
+        sync_execute("TRUNCATE TABLE IF EXISTS logs34")
         with open(os.path.join(os.path.dirname(__file__), "test_logs.jsonnd")) as f:
             log_item = json.loads(f.readline())
             log_item["team_id"] = cls.team.id
-            sync_execute(f"INSERT INTO logs FORMAT JSONEachRow {json.dumps(log_item)}")
+            sync_execute(f"INSERT INTO logs_distributed FORMAT JSONEachRow {json.dumps(log_item)}")
 
     @classmethod
     def tearDownClass(cls):
-        sync_execute("TRUNCATE TABLE IF EXISTS logs32")
+        sync_execute("TRUNCATE TABLE IF EXISTS logs34")
         super().tearDownClass()
 
     def _run(self, *, exclude: bool) -> list[dict]:

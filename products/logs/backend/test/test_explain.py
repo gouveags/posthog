@@ -172,7 +172,7 @@ class TestFetchLogByUuid(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -191,7 +191,7 @@ class TestFetchLogByUuid(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = 99999
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -269,7 +269,7 @@ class TestLogExplainAPI(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -309,7 +309,7 @@ class TestLogExplainAPI(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
@@ -354,7 +354,7 @@ class TestLogExplainAPI(ClickhouseTestMixin, APIBaseTest):
             log_item = json.loads(line)
             log_item["team_id"] = self.team.id
             sync_execute(f"""
-                INSERT INTO logs
+                INSERT INTO logs_distributed
                 FORMAT JSONEachRow
                 {json.dumps(log_item)}
             """)
