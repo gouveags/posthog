@@ -3109,7 +3109,8 @@ class ReferralHeroSourceConfig(config.Config):
 
 @config.config
 class RenderSourceConfig(config.Config):
-    pass
+    api_key: str
+    owner_id: str | None = None
 
 
 @config.config

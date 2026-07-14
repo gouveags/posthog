@@ -331,6 +331,7 @@ the row lists both.
 | recruitee                 | HTTP                        | requests                                                        | ✅                          |
 | reddit_ads                | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | redshift                  | DB protocol                 | psycopg (Postgres-compatible)                                   | ➖                          |
+| render                    | HTTP                        | requests                                                        | ✅                          |
 | rentcast                  | HTTP                        | requests                                                        | ✅                          |
 | replicate                 | HTTP                        | requests                                                        | ✅                          |
 | reply_io                  | HTTP                        | requests                                                        | ✅                          |
@@ -740,7 +741,6 @@ doesn't conflict with concurrent PRs.
 - reddit
 - redis
 - referralhero
-- render
 - repairshopr
 - reply_io
 - retail_express
