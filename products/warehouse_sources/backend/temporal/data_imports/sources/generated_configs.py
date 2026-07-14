@@ -2145,7 +2145,8 @@ class LinodeSourceConfig(config.Config):
 
 @config.config
 class LlamaCloudSourceConfig(config.Config):
-    pass
+    api_key: str
+    region: Literal["na", "eu"] = config.value(default="na")
 
 
 @config.config
