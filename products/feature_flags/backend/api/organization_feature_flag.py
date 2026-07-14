@@ -39,6 +39,8 @@ from products.feature_flags.backend.models.scheduled_change import ScheduledChan
 # single copy_flags call can fan out to. CopyFlagsRequestSerializer isn't used to validate
 # requests at runtime (only for the OpenAPI schema below), so the view enforces this limit
 # itself; the constant is shared so the documented and enforced limits can't drift apart.
+# The frontend mirrors this as BULK_COPY_MAX_TARGET_PROJECTS in
+# frontend/src/scenes/feature-flags/flagSelectionLogic.ts; keep the two in sync.
 MAX_COPY_FLAGS_TARGET_PROJECTS = 50
 
 
@@ -375,18 +377,8 @@ class OrganizationFeatureFlagView(
                 )
                 continue
 
-            # Being able to see a team isn't the same as being able to write flags into it. Check
-            # editor access against the specific flag when one already exists at this key (an
-            # overwrite), or against the feature_flag resource type in general when this would be a
-            # fresh copy (no object to check access against yet).
             existing_flag = FeatureFlag.objects.filter(key=feature_flag_key, team__project_id=target_project_id).first()
-            target_user_access_control = UserAccessControl(request.user, target_team)
-            target_has_access = (
-                target_user_access_control.check_access_level_for_object(existing_flag, "editor")
-                if existing_flag is not None
-                else target_user_access_control.check_access_level_for_resource("feature_flag", required_level="editor")
-            )
-            if not target_has_access:
+            if not self._check_target_project_write_access(request.user, target_team, existing_flag):
                 failed_projects.append(
                     {
                         "project_id": target_project_id,
@@ -597,6 +589,19 @@ class OrganizationFeatureFlagView(
             {"success": successful_projects, "failed": failed_projects},
             status=status.HTTP_200_OK,
         )
+
+    def _check_target_project_write_access(
+        self, user: User, target_team: Team, existing_flag: FeatureFlag | None
+    ) -> bool:
+        """Being able to see a team isn't the same as being able to write flags into it. Check
+        editor access against the specific flag when one already exists at this key (an
+        overwrite), or against the feature_flag resource type in general when this would be a
+        fresh copy (no object to check access against yet).
+        """
+        target_user_access_control = UserAccessControl(user, target_team)
+        if existing_flag is not None:
+            return target_user_access_control.check_access_level_for_object(existing_flag, "editor")
+        return target_user_access_control.check_access_level_for_resource("feature_flag", required_level="editor")
 
     def _remap_flag_dependencies(
         self, filters: dict, source_dependency_keys: dict[int, str], target_project_id: int

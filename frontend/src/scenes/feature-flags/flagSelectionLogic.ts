@@ -28,6 +28,8 @@ export interface BulkDeleteResult {
 }
 
 export const BULK_COPY_MAX_FLAGS = 100
+// Mirrors MAX_COPY_FLAGS_TARGET_PROJECTS in
+// products/feature_flags/backend/api/organization_feature_flag.py, which rejects more. Keep in sync.
 export const BULK_COPY_MAX_TARGET_PROJECTS = 50
 
 export interface BulkCopyParams {
@@ -77,12 +79,17 @@ function summarizeBulkCopy(
         return { level: 'success', message: summary }
     }
     if (copied.length > 0 || pendingApprovalCount > 0) {
-        return {
-            level: 'warning',
-            message: `${summary}${pendingApprovalCount > 0 ? `, ${pendingApprovalCount} pending approval` : ''}${
-                hardFailureCount > 0 ? `, ${hardFailureCount} failed` : ''
-            }`,
+        const parts: string[] = []
+        if (copied.length > 0) {
+            parts.push(summary)
         }
+        if (pendingApprovalCount > 0) {
+            parts.push(`${pendingApprovalCount} pending approval`)
+        }
+        if (hardFailureCount > 0) {
+            parts.push(`${hardFailureCount} failed`)
+        }
+        return { level: 'warning', message: parts.join(', ') }
     }
     return { level: 'error', message: 'No flags were copied' }
 }
@@ -295,7 +302,9 @@ export const flagSelectionLogic = kea<flagSelectionLogicType>([
                     const failedEntries = response.failed
                     // Copied targets are inferred as requested-minus-failed (robust to success items
                     // missing team_id during deploy skew); overwrites come from the per-item flag.
-                    const failedProjectIds = new Set(failedEntries.map((entry) => entry.project_id))
+                    const failedProjectIds = new Set(
+                        failedEntries.map((entry) => entry.project_id).filter((id): id is number => id != null)
+                    )
                     const copiedProjectIds = targetProjectIds.filter((id) => !failedProjectIds.has(id))
                     const updatedProjectIds = response.success
                         .filter((item) => item.updated_existing && item.team_id != null)

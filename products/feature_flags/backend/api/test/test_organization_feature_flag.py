@@ -962,6 +962,61 @@ class TestOrganizationFeatureFlagCopy(APIBaseTest, QueryMatchingTest):
         )
         self.assertFalse(FeatureFlag.objects.filter(team=self.team_2, key=self.feature_flag_key).exists())
 
+    def test_copy_feature_flag_overwrite_denied_by_object_level_access_control_fails(self):
+        from posthog.constants import AvailableFeature
+
+        from ee.models.rbac.access_control import AccessControl
+
+        self.organization.available_product_features = [
+            {
+                "name": AvailableFeature.ACCESS_CONTROL,
+                "key": AvailableFeature.ACCESS_CONTROL,
+            }
+        ]
+        self.organization.save()
+
+        # A flag with this key already exists in team_2, created by a different user so the
+        # creator-always-visible exception doesn't grant self.user access to it.
+        other_user = self._create_user("other-copy@posthog.com")
+        existing_flag = FeatureFlag.objects.create(
+            team=self.team_2,
+            created_by=other_user,
+            key=self.feature_flag_key,
+            filters={"groups": [{"rollout_percentage": 10}]},
+        )
+
+        # Deny editor access to this specific flag at the object level (team_2 stays visible).
+        AccessControl.objects.create(
+            team=self.team_2,
+            resource="feature_flag",
+            resource_id=str(existing_flag.id),
+            organization_member=None,
+            role=None,
+            access_level="viewer",
+        )
+
+        url = f"/api/organizations/{self.organization.id}/feature_flags/copy_flags"
+        data = {
+            "feature_flag_key": self.feature_flag_key,
+            "from_project": self.team_1.id,
+            "target_project_ids": [self.team_2.id],
+        }
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.json()["success"]), 0)
+        self.assertEqual(
+            response.json()["failed"],
+            [
+                {
+                    "project_id": self.team_2.id,
+                    "error_message": "You do not have permission to create or edit feature flags in this project.",
+                }
+            ],
+        )
+        existing_flag.refresh_from_db()
+        self.assertEqual(existing_flag.filters, {"groups": [{"rollout_percentage": 10}]})
+
     def test_copy_feature_flag_approval_required_reports_pending_and_continues(self):
         from products.approvals.backend.exceptions import ApprovalRequired
         from products.approvals.backend.models import ChangeRequest
