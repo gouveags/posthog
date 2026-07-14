@@ -239,6 +239,37 @@ class TestSessionExperimentContext(ClickhouseTestMixin, APILicensedTest):
         assert results[0]["variant"] == "test"
         assert results[0]["first_exposure_timestamp"] is None
 
+    def test_default_event_with_property_filters_defines_exposure_timestamp(self) -> None:
+        self._create_recording()
+        self._create_experiment(
+            exposure_criteria={
+                "exposure_config": {
+                    "kind": "ExperimentEventExposureConfig",
+                    "event": "$feature_flag_called",
+                    "properties": [{"key": "plan", "value": ["premium"], "operator": "exact", "type": "event"}],
+                }
+            }
+        )
+        # The experiment analysis applies the property filters even on the default event, so
+        # the earlier non-matching flag call must not define the exposure moment — and the
+        # variant must still come from $feature_flag_response (nothing stamps $feature/<key>).
+        self._create_session_event(
+            timestamp="2026-01-01T10:02:11Z",
+            properties={"$feature_flag": "checkout-cta", "$feature_flag_response": "test"},
+        )
+        self._create_session_event(
+            timestamp="2026-01-01T10:06:00Z",
+            properties={"$feature_flag": "checkout-cta", "$feature_flag_response": "test", "plan": "premium"},
+        )
+        flush_persons_and_events()
+
+        response = self._get_session_context()
+        assert response.status_code == status.HTTP_200_OK
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert results[0]["variant"] == "test"
+        assert results[0]["first_exposure_timestamp"] == "2026-01-01T10:06:00Z"
+
     def test_action_exposure_criteria_defines_exposure_timestamp(self) -> None:
         self._create_recording()
         action = Action.objects.create(team=self.team, name="Purchased", steps_json=[{"event": "purchase"}])

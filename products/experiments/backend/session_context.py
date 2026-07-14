@@ -2,9 +2,10 @@
 
 Variants come from the flag, via two complementary event signals:
 
-- Exposure events, resolved per experiment from its exposure criteria: `$feature_flag_called`
-  by default (variant in `$feature_flag_response`), or the configured custom event/action
-  (variant in the stamped `$feature/<key>` property).
+- Exposure events, resolved per experiment from its exposure criteria through the shared
+  `exposure_query_logic` helpers: `$feature_flag_called` by default (variant in
+  `$feature_flag_response`), or the configured custom event/action (variant in the stamped
+  `$feature/<key>` property).
 - `$feature/<key>` properties stamped on every captured event by posthog-js. These cover the
   SDK dedupe gap: a returning user's later sessions may carry no exposure event at all.
 
@@ -23,6 +24,8 @@ from django.db.models import Q, QuerySet
 
 import pydantic
 
+from posthog.schema import ExperimentEventExposureConfig, ExperimentExposureCriteria
+
 from posthog.hogql import ast
 from posthog.hogql.parser import parse_select
 from posthog.hogql.query import execute_hogql_query
@@ -33,6 +36,7 @@ from posthog.session_recordings.queries.session_replay_events import SessionRepl
 from products.experiments.backend.hogql_queries.exposure_query_logic import (
     build_exposure_event_conditions,
     get_exposure_event_and_property,
+    normalize_to_exposure_criteria,
 )
 from products.experiments.backend.models.experiment import Experiment
 
@@ -45,6 +49,17 @@ MAX_CANDIDATE_EXPERIMENTS = 50
 # is a backstop far above any real configuration — without it HogQL applies an implicit
 # LIMIT 100, which would silently and nondeterministically truncate legitimate rows.
 MAX_EXPOSURE_ROWS = 10_000
+
+
+@dataclass(frozen=True)
+class _ResolvedExposure:
+    """An experiment's exposure criteria resolved to what its exposure query needs: which
+    property carries the variant, the event/action + property conditions, and whether the
+    experiment can share the batched default `$feature_flag_called` query."""
+
+    variant_property: str
+    conditions: list[ast.Expr]
+    batchable: bool
 
 
 @dataclass(frozen=True)
@@ -106,31 +121,43 @@ def get_session_experiment_context(
         # No overlapping experiment defines variants, so nothing could surface a variant seen.
         return []
 
-    # Each experiment defines what counts as an exposure event: `$feature_flag_called` by
-    # default, or a custom event/action from its exposure criteria. Default-exposure
-    # experiments share one batched query; custom ones get one union branch each, keyed by
-    # experiment id since two experiments can share a flag with different criteria.
-    default_flag_keys: set[str] = set()
+    # Each experiment's exposure criteria resolve (through the shared helpers) to what counts
+    # as its exposure event and which property carries the variant. Experiments with the plain
+    # default shape share one batched `$feature_flag_called` query; the rest get one union
+    # branch each. Everything is keyed by experiment id, since two experiments can share a
+    # flag with different criteria.
+    flag_key_by_id: dict[int, str] = {}
+    default_experiments: list[tuple[int, str]] = []
     default_variants: set[str] = set()
-    custom_meta: list[tuple[int, str, Optional[dict], set[str]]] = []
+    branch_meta: list[tuple[int, _ResolvedExposure, set[str]]] = []
     for experiment_id, flag_key, filters, exposure_criteria in flag_meta:
         variant_keys = _variant_keys_from_filters(filters)
         if not variant_keys:
             continue
-        if _resolve_exposure_event(flag_key, exposure_criteria) == "$feature_flag_called":
-            default_flag_keys.add(flag_key)
+        flag_key_by_id[experiment_id] = flag_key
+        resolution = _resolve_exposure(team, flag_key, exposure_criteria)
+        if resolution.batchable:
+            default_experiments.append((experiment_id, flag_key))
             default_variants |= variant_keys
         else:
-            custom_meta.append((experiment_id, flag_key, exposure_criteria, variant_keys))
+            branch_meta.append((experiment_id, resolution, variant_keys))
 
-    exposures = (
+    default_flag_keys = {flag_key for _, flag_key in default_experiments}
+    exposures_by_flag_key = (
         _query_default_exposure_events(team, session_id, window_start, window_end, default_flag_keys, default_variants)
         if default_flag_keys
         else {}
     )
-    # Same width backstop as the candidate cap — each custom experiment adds a union branch.
-    custom_exposures = _query_custom_exposure_events(
-        team, session_id, window_start, window_end, custom_meta[:MAX_CANDIDATE_EXPERIMENTS]
+    exposures: dict[int, list[tuple[str, datetime]]] = {
+        experiment_id: exposures_by_flag_key[flag_key]
+        for experiment_id, flag_key in default_experiments
+        if flag_key in exposures_by_flag_key
+    }
+    # Same width backstop as the candidate cap — each branch experiment adds a union branch.
+    exposures.update(
+        _query_exposure_event_branches(
+            team, session_id, window_start, window_end, branch_meta[:MAX_CANDIDATE_EXPERIMENTS]
+        )
     )
 
     # The exposure queries cover every overlapping experiment's flag (not just the capped
@@ -138,8 +165,7 @@ def get_session_experiment_context(
     # when it fell outside the cap above. Rescued keys join the stamped-property query too —
     # it stays bounded, since rescues are limited to real overlapping experiments the session
     # demonstrably called.
-    custom_flag_keys_by_id = {experiment_id: flag_key for experiment_id, flag_key, _, _ in custom_meta}
-    evidenced_keys = set(exposures) | {custom_flag_keys_by_id[experiment_id] for experiment_id in custom_exposures}
+    evidenced_keys = {flag_key_by_id[experiment_id] for experiment_id in exposures}
     candidate_keys = {experiment.feature_flag.key for experiment in candidates}
     rescued_keys = evidenced_keys - candidate_keys
     if rescued_keys:
@@ -155,12 +181,7 @@ def get_session_experiment_context(
         # build_common_exposure_conditions: a non-enrolled user's flag evaluation captures
         # `$feature_flag_response: false`, which must not surface as a variant named "false".
         defined_variants = _defined_variant_keys(experiment)
-        raw_exposure_rows = (
-            exposures.get(flag_key, [])
-            if _resolve_exposure_event(flag_key, experiment.exposure_criteria) == "$feature_flag_called"
-            else custom_exposures.get(experiment.pk, [])
-        )
-        exposure_rows = [row for row in raw_exposure_rows if row[0] in defined_variants]
+        exposure_rows = [row for row in exposures.get(experiment.pk, []) if row[0] in defined_variants]
         stamped_values = [value for value in stamped.get(flag_key, []) if value in defined_variants]
         variants_seen = sorted({variant for variant, _ in exposure_rows} | set(stamped_values))
         if not variants_seen:
@@ -191,15 +212,28 @@ def get_session_experiment_context(
     return sorted(items, key=lambda item: item.experiment_name.lower())
 
 
-def _resolve_exposure_event(flag_key: str, exposure_criteria: Optional[dict]) -> Optional[str]:
-    """The event that counts as this experiment's exposure; None means an action-based
-    exposure. Malformed stored criteria fall back to the default exposure event rather than
-    failing the whole surface for one broken experiment."""
+def _resolve_exposure(team: Team, flag_key: str, exposure_criteria: Optional[dict]) -> _ResolvedExposure:
+    """Resolve an experiment's exposure criteria through the shared `exposure_query_logic`
+    helpers — the single seam that keeps this surface in sync with the experiment analysis.
+    Malformed stored criteria fall back to the default exposure event rather than failing the
+    whole surface for one broken experiment."""
+    criteria: Optional[ExperimentExposureCriteria]
     try:
-        event, _ = get_exposure_event_and_property(flag_key, exposure_criteria)
+        criteria = normalize_to_exposure_criteria(exposure_criteria)
     except pydantic.ValidationError:
-        return "$feature_flag_called"
-    return event
+        criteria = None
+    exposure_config = criteria.exposure_config if criteria else None
+    # Only the exact default shape can share the batched `$feature_flag_called` query;
+    # anything else (custom event, action, or the default event narrowed by property filters)
+    # needs its own union branch with conditions from the shared helpers.
+    batchable = exposure_config is None or (
+        isinstance(exposure_config, ExperimentEventExposureConfig)
+        and exposure_config.event == "$feature_flag_called"
+        and not exposure_config.properties
+    )
+    _, variant_property = get_exposure_event_and_property(flag_key, criteria)
+    conditions = [] if batchable else build_exposure_event_conditions(criteria, team, flag_key)
+    return _ResolvedExposure(variant_property=variant_property, conditions=conditions, batchable=batchable)
 
 
 def _variant_keys_from_filters(filters: Optional[dict]) -> set[str]:
@@ -221,7 +255,8 @@ def _query_default_exposure_events(
 ) -> dict[str, list[tuple[str, datetime]]]:
     """The session's `$feature_flag_called` events for the given experiment flag keys and
     defined variant names, as flag_key -> [(variant, first_seen)]. Covers every experiment
-    whose exposure criteria resolve to the default `$feature_flag_called` event."""
+    whose exposure criteria resolve to the plain default shape (`$feature_flag_called` with
+    no extra property filters)."""
     query = parse_select(
         """
         SELECT properties.$feature_flag AS flag_key,
@@ -256,25 +291,25 @@ def _query_default_exposure_events(
     return exposures
 
 
-def _query_custom_exposure_events(
+def _query_exposure_event_branches(
     team: Team,
     session_id: str,
     window_start: datetime,
     window_end: datetime,
-    custom_meta: list[tuple[int, str, Optional[dict], set[str]]],
+    branch_meta: list[tuple[int, _ResolvedExposure, set[str]]],
 ) -> dict[int, list[tuple[str, datetime]]]:
-    """The session's exposure events for experiments with custom exposure criteria (a custom
-    event or action), as experiment_id -> [(variant, first_seen)].
+    """The session's exposure events for experiments whose criteria don't fit the batched
+    default query (a custom event, an action, or the default event narrowed by property
+    filters), as experiment_id -> [(variant, first_seen)].
 
     One union branch per experiment: the event/action and property filters come from the
     experiment's exposure criteria via `build_exposure_event_conditions`, and the variant from
-    the stamped `$feature/<key>` property (custom exposure events carry no
-    `$feature_flag_response`). Keyed by experiment id because two experiments can share a flag
-    with different criteria.
+    the property `get_exposure_event_and_property` dictates — the stamped `$feature/<key>`
+    property for custom events and actions (they carry no `$feature_flag_response`),
+    `$feature_flag_response` for the default event.
     """
     branches: list[ast.SelectQuery] = []
-    for experiment_id, flag_key, exposure_criteria, variants in custom_meta:
-        conditions = build_exposure_event_conditions(exposure_criteria, team, flag_key)
+    for experiment_id, resolution, variants in branch_meta:
         branch = parse_select(
             """
             SELECT {experiment_id} AS experiment_id,
@@ -290,8 +325,10 @@ def _query_custom_exposure_events(
             """,
             placeholders={
                 "experiment_id": ast.Constant(value=experiment_id),
-                "variant_field": ast.Field(chain=["properties", f"$feature/{flag_key}"]),
-                "exposure_conditions": ast.And(exprs=conditions) if conditions else ast.Constant(value=True),
+                "variant_field": ast.Field(chain=["properties", resolution.variant_property]),
+                "exposure_conditions": ast.And(exprs=resolution.conditions)
+                if resolution.conditions
+                else ast.Constant(value=True),
                 "session_id": ast.Constant(value=session_id),
                 "variants": ast.Constant(value=sorted(variants)),
                 "window_start": ast.Constant(value=window_start),
@@ -310,12 +347,12 @@ def _query_custom_exposure_events(
     query.limit = ast.Constant(value=MAX_EXPOSURE_ROWS)
     response = execute_hogql_query(query, team=team)
 
-    custom_exposures: dict[int, list[tuple[str, datetime]]] = {}
+    exposures: dict[int, list[tuple[str, datetime]]] = {}
     for experiment_id, variant, first_seen in response.results or []:
         if not variant:
             continue
-        custom_exposures.setdefault(int(experiment_id), []).append((str(variant), first_seen))
-    return custom_exposures
+        exposures.setdefault(int(experiment_id), []).append((str(variant), first_seen))
+    return exposures
 
 
 def _query_stamped_flag_properties(
