@@ -247,6 +247,7 @@ the row lists both.
 | lob                       | HTTP                        | requests                                                        | ✅                          |
 | luma                      | HTTP                        | requests                                                        | ✅                          |
 | mailchimp                 | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
+| mem0                      | HTTP                        | requests                                                        | ✅                          |
 | mailerlite                | HTTP                        | requests                                                        | ✅                          |
 | mailersend                | HTTP                        | requests                                                        | ✅                          |
 | mailgun                   | HTTP                        | requests                                                        | ✅                          |
@@ -654,7 +655,6 @@ doesn't conflict with concurrent PRs.
 - mailtrap
 - mantle
 - marketo
-- mem0
 - mendeley
 - mercado_ads
 - mercury

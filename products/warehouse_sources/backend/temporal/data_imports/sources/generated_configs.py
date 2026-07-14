@@ -2259,7 +2259,9 @@ class MaxioSourceConfig(config.Config):
 
 @config.config
 class Mem0SourceConfig(config.Config):
-    pass
+    api_key: str
+    org_id: str | None = None
+    project_id: str | None = None
 
 
 @config.config
