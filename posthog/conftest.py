@@ -47,7 +47,10 @@ def create_clickhouse_tables():
     }
 
     def missing(queries):
-        return [q for q in queries if get_table_name(q) not in existing_tables]
+        # CREATE OR REPLACE statements are how the canonical schema repoints an existing
+        # table (e.g. a distributed table cut over to a new data table); they must run
+        # even when the table already exists so kept/reused databases converge.
+        return [q for q in queries if get_table_name(q) not in existing_tables or "CREATE OR REPLACE" in build_query(q)]
 
     mergetree_queries = list(map(build_query, missing(CREATE_MERGETREE_TABLE_QUERIES)))
     if mergetree_queries:

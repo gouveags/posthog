@@ -8,6 +8,7 @@ from posthog.schema import DateRange, LogsQuery
 from posthog.hogql.errors import QueryError
 
 from posthog.clickhouse.client import sync_execute
+from posthog.clickhouse.logs.logs34 import TABLE_NAME as LOGS_LOCAL_TABLE
 
 from products.logs.backend.column_expressions import canonical_key
 from products.logs.backend.logs_query_runner import MAX_CUSTOM_COLUMNS, LogsQueryRunner
@@ -24,7 +25,7 @@ class TestLogsCustomColumns(ClickhouseTestMixin, APIBaseTest):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        sync_execute("TRUNCATE TABLE IF EXISTS logs34")
+        sync_execute(f"TRUNCATE TABLE IF EXISTS {LOGS_LOCAL_TABLE}")
         with open(os.path.join(os.path.dirname(__file__), "test_logs.jsonnd")) as f:
             log_item = json.loads(f.readline())
             log_item["team_id"] = cls.team.id
@@ -32,7 +33,7 @@ class TestLogsCustomColumns(ClickhouseTestMixin, APIBaseTest):
 
     @classmethod
     def tearDownClass(cls):
-        sync_execute("TRUNCATE TABLE IF EXISTS logs34")
+        sync_execute(f"TRUNCATE TABLE IF EXISTS {LOGS_LOCAL_TABLE}")
         super().tearDownClass()
 
     def _run(self, custom_columns: list[str]):

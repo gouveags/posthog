@@ -1,9 +1,7 @@
-import datetime as dt
 from functools import cached_property
 from typing import cast
-from zoneinfo import ZoneInfo
 
-from posthog.schema import CachedLogsQueryResponse, IntervalType, LogsQuery
+from posthog.schema import CachedLogsQueryResponse, LogsQuery
 
 from posthog.hogql import ast
 from posthog.hogql.constants import HogQLGlobalSettings
@@ -12,7 +10,6 @@ from posthog.hogql.query import execute_hogql_query
 
 from posthog.clickhouse.client.connection import Workload
 from posthog.hogql_queries.query_runner import AnalyticsQueryRunner
-from posthog.hogql_queries.utils.query_date_range import QueryDateRange
 
 from products.logs.backend.logs_query_runner import (
     LogsFilterBuilder,
@@ -40,7 +37,8 @@ class LogFacetValuesQueryRunner(AnalyticsQueryRunner[LogsQueryResponse], LogsQue
     logs Map column — orders of magnitude cheaper, and the only way to keep the query under the read
     cap at scale. Both exclude the facet's own filter so selecting a value re-scopes the *other*
     facets. Resource-attribute facet counts honour service_name and other resource-attribute filters
-    but not severity / body-search / log-attribute filters (those dimensions aren't in the rollup).
+    but not body-search / log-attribute filters (not rollup dimensions) — nor, for now, severity,
+    which the gen-3 rollup does carry but this runner doesn't apply yet.
     """
 
     query: LogsQuery
@@ -82,18 +80,6 @@ class LogFacetValuesQueryRunner(AnalyticsQueryRunner[LogsQueryResponse], LogsQue
             max_execution_time=30,
             max_bytes_to_read=10_000_000_000,
             read_overflow_mode="throw",
-        )
-
-    @cached_property
-    def _attributes_query_date_range(self) -> QueryDateRange:
-        # log_attributes is bucketed at 10-minute granularity; align bounds to it.
-        return QueryDateRange(
-            date_range=self.query.dateRange,
-            team=self.team,
-            interval=IntervalType.MINUTE,
-            interval_count=10,
-            now=dt.datetime.now(),
-            timezone_info=ZoneInfo("UTC"),
         )
 
     def _calculate(self) -> LogsQueryResponse:
@@ -167,19 +153,10 @@ class LogFacetValuesQueryRunner(AnalyticsQueryRunner[LogsQueryResponse], LogsQue
     def _resource_attribute_query(self) -> ast.SelectQuery:
         # Served from the pre-aggregated log_attributes rollup (sum(attribute_count)) rather than
         # grouping the logs Map column, which reads the whole resource_attributes column and blows
-        # past the read cap at scale. The rollup has no severity/body/log-attribute dimension, so only
-        # service_name and other resource-attribute filters re-scope the counts.
-        date_range = self._attributes_query_date_range
-        where_exprs: list[ast.Expr] = []
-        if self.query.serviceNames:
-            where_exprs.append(
-                parse_expr(
-                    "service_name IN {serviceNames}",
-                    placeholders={
-                        "serviceNames": ast.Tuple(exprs=[ast.Constant(value=str(sn)) for sn in self.query.serviceNames])
-                    },
-                )
-            )
+        # past the read cap at scale. Body-search and log-attribute filters aren't rollup dimensions,
+        # so only service_name and other resource-attribute filters re-scope the counts (severity is
+        # a rollup dimension since gen 3 but isn't applied here yet).
+        date_range = self.attributes_query_date_range
         # Cross-filter by other resource attributes, excluding this facet's own key so selecting a
         # value doesn't collapse the facet to that single value.
         filter_builder = LogsFilterBuilder(
@@ -188,6 +165,9 @@ class LogFacetValuesQueryRunner(AnalyticsQueryRunner[LogsQueryResponse], LogsQue
             date_range,
             exclude_resource_attribute=self.facet_resource_attribute,
         )
+        where_exprs: list[ast.Expr] = []
+        if (service_names := filter_builder.service_names_expr()) is not None:
+            where_exprs.append(service_names)
         where_exprs.append(filter_builder.resource_filter(existing_filters=where_exprs))
 
         query = parse_select(

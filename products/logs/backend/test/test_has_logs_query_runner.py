@@ -9,6 +9,7 @@ from django.core.cache import cache
 from rest_framework import status
 
 from posthog.clickhouse.client import sync_execute
+from posthog.clickhouse.logs.logs34 import TABLE_NAME as LOGS_LOCAL_TABLE
 
 from products.logs.backend.has_logs_query_runner import HasLogsQueryRunner
 
@@ -61,7 +62,7 @@ class TestHasLogsAPI(ClickhouseTestMixin, APIBaseTest):
 
     def test_has_logs_api_returns_false_when_no_logs(self):
         # Clean up any logs from previous tests
-        sync_execute(f"TRUNCATE TABLE IF EXISTS logs34")
+        sync_execute(f"TRUNCATE TABLE IF EXISTS {LOGS_LOCAL_TABLE}")
         cache.delete(f"team:{self.team.id}:has_logs")
 
         response = self.client.get(f"/api/projects/{self.team.id}/logs/has_logs")

@@ -12,16 +12,20 @@ from posthog.clickhouse.client.connection import Workload
 from posthog.hogql_queries.query_runner import AnalyticsQueryRunner
 from posthog.models.filters.mixins.utils import cached_property
 
-from products.logs.backend.logs_query_runner import LogsQueryResponse, LogsQueryRunnerMixin, _severity_level_to_expr
+from products.logs.backend.logs_query_runner import LogsQueryResponse, LogsQueryRunnerMixin, severity_level_to_expr
 
 if TYPE_CHECKING:
     from posthog.models import User
 
-# Hard byte budget with "throw": a grouped aggregation with partial input would report
-# silently wrong counts, so an over-budget scan must fail loudly (the UI asks the user
-# to narrow the window) rather than return truncated aggregates.
+# Hard byte budgets with "throw": a grouped aggregation with partial input would report
+# silently wrong counts, so an over-budget read must fail loudly (the UI asks the user
+# to narrow the window) rather than return truncated aggregates. The rollup is orders of
+# magnitude smaller than the logs table, so its budget is tighter — a rollup read that
+# approaches it means something pathological, and it should fail fast.
 MAX_READ_BYTES = 10_000_000_000
 MAX_EXECUTION_TIME = 60
+MAX_ROLLUP_READ_BYTES = 5_000_000_000
+MAX_ROLLUP_EXECUTION_TIME = 30
 
 DEFAULT_GROUP_LIMIT = 100
 MAX_GROUP_LIMIT = 500
@@ -103,8 +107,8 @@ class LogsGroupByQueryRunner(AnalyticsQueryRunner[LogsQueryResponse], LogsQueryR
     @cached_property
     def settings(self) -> HogQLGlobalSettings:
         return HogQLGlobalSettings(
-            max_execution_time=MAX_EXECUTION_TIME,
-            max_bytes_to_read=MAX_READ_BYTES,
+            max_execution_time=MAX_ROLLUP_EXECUTION_TIME if self._use_rollup else MAX_EXECUTION_TIME,
+            max_bytes_to_read=MAX_ROLLUP_READ_BYTES if self._use_rollup else MAX_READ_BYTES,
             read_overflow_mode="throw",
             timeout_overflow_mode="throw",
         )
@@ -199,63 +203,34 @@ class LogsGroupByQueryRunner(AnalyticsQueryRunner[LogsQueryResponse], LogsQueryR
         return query
 
     def _rollup_where(self) -> ast.Expr:
-        # Filters that hold for any row of the rollup, not just rows of the grouped key.
-        # Only these may be pushed into the resource-fingerprint subquery: the outer
-        # attribute_type/attribute_key constraint would contradict the subquery's own
-        # attribute matching and empty it out.
-        context_exprs: list[ast.Expr] = []
-        if self.query.serviceNames:
-            context_exprs.append(
-                parse_expr(
-                    "service_name IN {serviceNames}",
-                    placeholders={
-                        "serviceNames": ast.Tuple(exprs=[ast.Constant(value=str(sn)) for sn in self.query.serviceNames])
-                    },
-                )
-            )
-        if self.query.resourceFingerprint:
-            context_exprs.append(
-                parse_expr(
-                    "resource_fingerprint = {resourceFingerprint}",
-                    placeholders={"resourceFingerprint": ast.Constant(value=str(self.query.resourceFingerprint))},
-                )
-            )
-
+        context_exprs = self._filter_builder.rollup_context_exprs()
         exprs: list[ast.Expr] = [
             # Closed bounds on 10-minute bucket starts: every bucket overlapping the window is
             # included, so counts can include up to one bucket of out-of-window rows per edge.
             parse_expr(
-                "time_bucket >= toStartOfInterval({date_from}, toIntervalMinute(10)) "
-                "AND time_bucket <= toStartOfInterval({date_to}, toIntervalMinute(10))",
-                placeholders={
-                    "date_from": ast.Constant(value=self.query_date_range.date_from()),
-                    "date_to": ast.Constant(value=self.query_date_range.date_to()),
-                },
+                "time_bucket >= {date_from_start_of_interval} AND time_bucket <= {date_to_start_of_interval}",
+                placeholders=self.attributes_query_date_range.to_placeholders(),
             ),
             parse_expr(
+                # _use_rollup excludes the "column" source, so the remaining sources name
+                # their rollup attribute_type directly.
                 "attribute_type = {attribute_type} AND attribute_key = {attribute_key} AND attribute_value != ''",
                 placeholders={
-                    "attribute_type": ast.Constant(value="log" if self.group_by_source == "log" else "resource"),
+                    "attribute_type": ast.Constant(value=self.group_by_source),
                     "attribute_key": ast.Constant(value=self.group_by),
                 },
             ),
             *context_exprs,
         ]
-        if self.query.severityLevels:
-            exprs.append(
-                parse_expr(
-                    "severity_text IN {severityLevels}",
-                    placeholders={
-                        "severityLevels": ast.Tuple(
-                            exprs=[ast.Constant(value=str(sl)) for sl in self.query.severityLevels]
-                        )
-                    },
-                )
-            )
+        if (severity_levels := self._filter_builder.severity_levels_expr()) is not None:
+            exprs.append(severity_levels)
         # _use_rollup guarantees only severity_level filters remain in log_filters.
         for log_filter in self._filter_builder.log_filters:
-            exprs.append(_severity_level_to_expr(log_filter))
-        if self.query.filterGroup:
+            exprs.append(severity_level_to_expr(log_filter))
+        if self._filter_builder.resource_attribute_filters or self._filter_builder.resource_attribute_negative_filters:
+            # Only context filters may be pushed into the resource-fingerprint subquery: the
+            # outer attribute_type/attribute_key constraint would contradict the subquery's
+            # own attribute matching and empty it out.
             exprs.append(self.resource_filter(existing_filters=context_exprs))
         return ast.And(exprs=exprs)
 

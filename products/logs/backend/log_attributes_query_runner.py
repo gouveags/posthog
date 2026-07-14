@@ -1,7 +1,4 @@
-import datetime as dt
-from zoneinfo import ZoneInfo
-
-from posthog.schema import IntervalType, LogAttributeResult, LogAttributesQuery, LogAttributesQueryResponse, MatchedOn
+from posthog.schema import LogAttributeResult, LogAttributesQuery, LogAttributesQueryResponse, MatchedOn
 
 from posthog.hogql import ast
 from posthog.hogql.constants import HogQLGlobalSettings
@@ -36,14 +33,9 @@ class LogAttributesQueryRunner(AnalyticsQueryRunner[LogAttributesQueryResponse],
 
     @cached_property
     def query_date_range(self) -> QueryDateRange:
-        return QueryDateRange(
-            date_range=self.query.dateRange,
-            team=self.team,
-            interval=IntervalType.MINUTE,
-            interval_count=10,
-            now=dt.datetime.now(),
-            timezone_info=ZoneInfo("UTC"),
-        )
+        # This runner reads the log_attributes rollup, so its whole date range (not just the
+        # rollup subqueries) aligns to the rollup's 10-minute buckets.
+        return self.attributes_query_date_range
 
     def to_query(self) -> ast.SelectQuery:
         if self._should_search_values():
