@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import argparse
 from dataclasses import dataclass
-from typing import get_args
+from typing import Literal, get_args
 
 from .providers import DockerProviderStrategy, ModalProviderStrategy, SandboxProvider
 
@@ -17,6 +17,8 @@ DEFAULT_CODEX_AGENT_MODEL = "gpt-5.5"
 # Django-free (see harness/AGENTS.md), so it cannot import the enum.
 AGENT_RUNTIMES = ("claude", "codex")
 DEFAULT_AGENT_MODEL_BY_RUNTIME = {"claude": DEFAULT_AGENT_MODEL, "codex": DEFAULT_CODEX_AGENT_MODEL}
+SkillDelivery = Literal["bundled", "exec"]
+DEFAULT_SKILL_DELIVERY: SkillDelivery = "bundled"
 DEFAULT_CASE_TIMEOUT_SECONDS = 60 * 15
 OFFLINE_CASE_TIMEOUT_SECONDS = 60 * 60
 
@@ -35,6 +37,7 @@ class HarnessOptions:
     case_filter: str | None
     agent_model: str
     agent_runtime: str
+    skill_delivery: SkillDelivery
     reasoning_effort: str | None
     max_sandboxes: int
     keep_sandbox_containers: bool
@@ -86,6 +89,15 @@ def build_parser() -> argparse.ArgumentParser:
         choices=AGENT_RUNTIMES,
         default="claude",
         help="Agent runtime serving the model. 'codex' additionally requires LLM_GATEWAY_OPENAI_API_KEY.",
+    )
+    parser.add_argument(
+        "--skill-delivery",
+        choices=get_args(SkillDelivery),
+        default=DEFAULT_SKILL_DELIVERY,
+        help=(
+            "How product skills reach the agent. 'bundled' uses the harness's normal native skills; "
+            "'exec' enables MCP skill distribution and removes native skills from every sandbox."
+        ),
     )
     parser.add_argument(
         "--reasoning-effort",
@@ -174,6 +186,7 @@ def parse_args(argv: list[str] | None = None) -> HarnessOptions:
         case_filter=args.case_filter,
         agent_model=agent_model,
         agent_runtime=args.agent_runtime,
+        skill_delivery=args.skill_delivery,
         reasoning_effort=args.reasoning_effort,
         max_sandboxes=max_sandboxes,
         keep_sandbox_containers=args.keep_sandbox_containers,

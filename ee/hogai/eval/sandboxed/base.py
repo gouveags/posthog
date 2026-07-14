@@ -192,7 +192,13 @@ class _SandboxedEvalRun:
                 # The factory does Django ORM work. Django's async-safety
                 # guard rejects sync ORM calls from async contexts, so run it
                 # in a worker thread.
-                sandbox_context = await asyncio.to_thread(ctx.demo_data.make_context, eval_case.name)
+                sandbox_context = await asyncio.to_thread(
+                    ctx.demo_data.make_context,
+                    eval_case.name,
+                    disable_bundled_skills=(
+                        ctx.skill_delivery == "exec" or bool(original_case and original_case.disable_bundled_skills)
+                    ),
+                )
             if original_case is not None and original_case.setup is not None:
                 try:
                     seed_result = await asyncio.to_thread(original_case.setup, sandbox_context)
@@ -398,9 +404,13 @@ class _SandboxedEvalRun:
             update=True,
             is_public=self.is_public,
             no_send_logs=self.no_send_logs,
-            # Experiment names stay runtime/model-agnostic so history lines up across
-            # runs; the metadata is what lets Braintrust filter or compare by them.
-            metadata={"agent_model": self.ctx.agent_model, "agent_runtime": self.ctx.agent_runtime},
+            # Experiment names stay runtime/model/delivery-agnostic so history lines
+            # up across runs; metadata lets Braintrust filter or compare by them.
+            metadata={
+                "agent_model": self.ctx.agent_model,
+                "agent_runtime": self.ctx.agent_runtime,
+                "skill_delivery": self.ctx.skill_delivery,
+            },
         )
 
         await self._finalize(result)

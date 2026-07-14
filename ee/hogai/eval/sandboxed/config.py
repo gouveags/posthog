@@ -32,6 +32,14 @@ class SandboxedEvalCase(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     """Arbitrary metadata for tracking and filtering."""
 
+    disable_bundled_skills: bool = False
+    """Remove skills baked into the sandbox image for this case.
+
+    Use this when the behavior under evaluation is a separate skill delivery
+    path, so native agent skill discovery cannot satisfy the task by accident.
+    Exec skill-delivery mode applies the same behavior to every case.
+    """
+
     setup: Callable[[CustomPromptSandboxContext], dict[str, Any]] | None = Field(
         default=None,
         exclude=True,

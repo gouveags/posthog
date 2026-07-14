@@ -47,10 +47,11 @@ async def eval_my_thing(ctx: EvalContext) -> None:
 
 ## Case anatomy
 
-`SandboxedEvalCase` (`ee/hogai/eval/sandboxed/config.py`) has five author-facing fields: `name`, `prompt`, `expected`, `metadata`, `setup`.
+`SandboxedEvalCase` (`ee/hogai/eval/sandboxed/config.py`) has seven author-facing fields: `name`, `prompt`, `repo_fixture`, `expected`, `metadata`, `disable_bundled_skills`, `setup`.
 
 - `name` doubles as the `--eval <substr>` filter target and the per-case log filename — keep it unique within the suite.
 - `expected` is keyed by each scorer's `_name()`. A scorer reads only its own sub-dict and self-skips (or falls back to default behavior) when its key is absent — that is what lets one scorer list span a suite's cases. Judges take payloads like `{"warehouse_answer_correctness": {"expected_answer": "..."}}`.
+- `--skill-delivery exec` enables MCP skill distribution and removes native skills for every case in the run. `disable_bundled_skills=True` is an additional per-case override for other delivery-path evals.
 - Every case runs in a fresh isolated org/team/user copied from the master Hedgebox team, so cases never see each other's state.
 
 ## Seeding data: seeders and synthesizers
@@ -111,12 +112,14 @@ Rules that apply to both:
 hogli evals:sandboxed --list                      # suite ids, no infra
 hogli evals:sandboxed eval_my_thing --eval my_case  # one case, docker
 hogli evals:sandboxed cli_mcp --provider modal    # a domain, remote, fully parallel
+hogli evals:sandboxed eval_skill_distribution --skill-delivery exec  # exec-distributed skills only
 ```
 
 - Run from a flox shell (or wrap in `flox activate -- bash -c "..."`): the personhog build needs flox's Rust toolchain, and outside it the preflight `cargo build` dies on a missing `pkg-config`/OpenSSL.
 - Env is loaded automatically (`.env` by the harness, `.env.local`/`.env.development`/`.env.services` by hogli) and a preflight validates the required variables before any infrastructure boots.
 - `--provider docker` (default) caps at 4 concurrent sandboxes (16 GB each); `--provider modal` is unbounded — every case runs at once, `--max-sandboxes` is the cost knob.
 - `--trials N` repeats every case for variance on stochastic behavior; `--fail-under <fraction>` gates the run's mean score.
+- `--skill-delivery bundled` is the default native-skill path. `--skill-delivery exec` enables the MCP skill prompt and clears all native skill directories; compare the modes in separate runs because MCP configuration is process-wide.
 - `--agent-runtime codex` runs the OpenAI Codex harness (default model `gpt-5.5`) instead of Claude; it requires `LLM_GATEWAY_OPENAI_API_KEY`. The runtime/model land in the Braintrust experiment metadata, so compare scores within one runtime.
 - For non-interactive runs set `EXPORT_EVAL_RESULTS=1`: Braintrust's progress bars mangle redirected terminal output, and `eval_results.jsonl` (one JSON summary per experiment) is the reliable record.
 - Fastest debugging is the local log dir `ee/hogai/eval/sandboxed/logs/<experiment>/latest/` — per case: `<case>.jsonl` (raw agent log), `<case>.artifacts.json`, `<case>.summary.txt`. `logs/runs.jsonl` indexes historical runs.
