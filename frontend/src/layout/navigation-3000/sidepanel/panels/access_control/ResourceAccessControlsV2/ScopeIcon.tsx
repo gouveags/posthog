@@ -1,6 +1,7 @@
 import {
     IconApps,
     IconBug,
+    IconCursorClick,
     IconEndpoints,
     IconCursor,
     IconDashboard,
@@ -58,6 +59,8 @@ export function ScopeIcon(props: { scope: APIScopeObject }): JSX.Element | null 
             return <IconDatabase />
         case 'feature_flag':
             return <IconToggle />
+        case 'heatmap':
+            return <IconCursorClick />
         case 'hog_flow':
             return <IconDecisionTree />
         case 'insight':

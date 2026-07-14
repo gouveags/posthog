@@ -279,6 +279,7 @@ export enum AccessControlResourceType {
     Action = 'action',
     CustomerAnalytics = 'customer_analytics',
     FeatureFlag = 'feature_flag',
+    Heatmap = 'heatmap',
     Insight = 'insight',
     Dashboard = 'dashboard',
     DashboardTemplate = 'dashboard_template',
@@ -7586,6 +7587,7 @@ export interface HeatmapScreenshotType {
     exception?: string
     error?: string // Added for error responses from content endpoint
     created_by?: UserBasicType | null
+    user_access_level?: AccessControlLevel
 }
 
 export type HeatmapScreenshotContentResponse =
