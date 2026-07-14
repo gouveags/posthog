@@ -9,7 +9,7 @@ from django.http.response import HttpResponseBase
 import httpx
 import structlog
 
-from posthog.api.streaming import sse_streaming_response
+from posthog.api.streaming import sse_killswitch_rejection, sse_streaming_response
 from posthog.security.url_validation import is_url_allowed
 from posthog.settings import SERVER_GATEWAY_INTERFACE
 
@@ -371,6 +371,14 @@ def proxy_mcp_request(request: Any, installation: MCPServerInstallation) -> Http
     mcp_session_id = request.headers.get("mcp-session-id")
     if mcp_session_id:
         headers["Mcp-Session-Id"] = mcp_session_id
+
+    # The upstream invocation itself is the cost (the tool call executes on
+    # the MCP server, and whether the reply is SSE is unknown until it comes
+    # back), so the killswitch must answer before the request is sent; the
+    # copy inside sse_streaming_response would only discard the response.
+    rejection = sse_killswitch_rejection("mcp_store_proxy", "mcp-store-sse-killswitch")
+    if rejection is not None:
+        return rejection
 
     client = httpx.Client(timeout=UPSTREAM_TIMEOUT)
     try:

@@ -348,11 +348,15 @@ class TestSSEKillswitch:
     # kill never opens the stream and that flag-evaluation failures fail open.
 
     def test_killswitch_on_returns_204_without_opening_the_stream(self):
+        slot_baseline = streaming._active_stream_count
         with mock.patch("posthog.api.streaming.posthoganalytics.feature_enabled", return_value=True) as feature_enabled:
             response = sse_streaming_response(_gen(), endpoint="test_kill_on", killswitch_flag="test-sse-killswitch")
         assert response.status_code == HTTPStatus.NO_CONTENT
         assert not isinstance(response, StreamingHttpResponse)
         assert _open_connections("test_kill_on") == 0.0
+        # The kill is decided before admission: a killed request must not
+        # reserve (or leak) a cap slot.
+        assert streaming._active_stream_count == slot_baseline
         assert REGISTRY.get_sample_value("posthog_sse_killswitch_rejected_total", {"endpoint": "test_kill_on"}) == 1.0
         feature_enabled.assert_called_once_with(
             "test-sse-killswitch",

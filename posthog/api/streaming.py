@@ -119,6 +119,25 @@ def _killswitch_enabled(flag: str, distinct_id: str) -> bool:
         return False
 
 
+def sse_killswitch_rejection(
+    endpoint: str,
+    flag: str,
+    distinct_id: str = "sse-killswitch",
+) -> HttpResponse | None:
+    """Return the killswitch 204 when ``flag`` is on, else ``None``.
+
+    ``sse_streaming_response`` already applies the killswitch, but only at
+    response-construction time. Views that do side-effecting work before
+    building their stream (launching a workflow, invoking an upstream service)
+    must call this first, or a kill only discards the response while the work
+    keeps happening on every reconnect.
+    """
+    if _killswitch_enabled(flag, distinct_id):
+        SSE_KILLSWITCH_REJECTED_COUNTER.labels(endpoint=endpoint).inc()
+        return HttpResponse(status=HTTPStatus.NO_CONTENT)
+    return None
+
+
 class _StreamSlotReservation:
     """One admitted slot against the per-process stream cap.
 
@@ -390,9 +409,10 @@ def sse_streaming_response(
     Killswitch flags follow the ``<product>-sse-killswitch`` naming convention
     and fail open if evaluation errors.
     """
-    if killswitch_flag is not None and _killswitch_enabled(killswitch_flag, killswitch_distinct_id):
-        SSE_KILLSWITCH_REJECTED_COUNTER.labels(endpoint=endpoint).inc()
-        return HttpResponse(status=HTTPStatus.NO_CONTENT)
+    if killswitch_flag is not None:
+        rejection = sse_killswitch_rejection(endpoint, killswitch_flag, killswitch_distinct_id)
+        if rejection is not None:
+            return rejection
     reservation = _try_reserve_stream_slot()
     if reservation is None:
         return _stream_cap_rejection(endpoint)
