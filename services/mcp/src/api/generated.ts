@@ -32967,6 +32967,8 @@ export namespace Schemas {
       connectors: LoopConnectorsDTO;
       /** Per-channel notification configuration. */
       notifications: LoopNotificationsDTO;
+      internal: boolean;
+      origin_product: string;
       /** @nullable */
       last_run_at: string | null;
       /** @nullable */
