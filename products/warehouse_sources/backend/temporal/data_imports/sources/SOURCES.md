@@ -205,6 +205,7 @@ the row lists both.
 | healthchecks              | HTTP                        | requests                                                        | ✅                          |
 | height                    | HTTP                        | requests                                                        | ✅                          |
 | hellobaton                | HTTP                        | requests                                                        | ✅                          |
+| heroku                    | HTTP                        | requests                                                        | ✅                          |
 | hibob                     | HTTP                        | requests                                                        | ✅                          |
 | humanitix                 | HTTP                        | requests                                                        | ✅                          |
 | hubplanner                | HTTP                        | requests                                                        | ✅                          |
@@ -597,7 +598,6 @@ doesn't conflict with concurrent PRs.
 - heap
 - helicone
 - helpscout
-- heroku
 - hetzner
 - hex
 - heygen
