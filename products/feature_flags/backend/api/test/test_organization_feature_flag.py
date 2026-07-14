@@ -803,12 +803,12 @@ class TestOrganizationFeatureFlagCopy(APIBaseTest, QueryMatchingTest):
         self.assertIn("error", response.json())
         self.assertFalse(FeatureFlag.objects.filter(key=self.feature_flag_key, team_id=self.team_2.id).exists())
 
+    @patch("posthog.rate_limit.is_rate_limit_enabled", return_value=True)
     @patch("posthog.rate_limit.CopyFlagsBurstRateThrottle.rate", new="1/minute")
-    def test_copy_feature_flag_throttles_session_authenticated_requests(self):
-        # ClickHouseBurstRateThrottle only throttles personal-API-key requests, so it would let
-        # the test client's session-authenticated calls through unthrottled. CopyFlagsBurstRateThrottle
-        # is a UserRateThrottle, which keys off request.user for any auth method, so it must catch
-        # this too. The patched rate makes the second request trip it deterministically.
+    def test_copy_feature_flag_throttles_session_authenticated_requests(self, *_args):
+        # CopyFlagsBurstRateThrottle subclasses PersonalApiKeyOrUserRateThrottle, which applies
+        # regardless of auth method, so it must catch the test client's session-authenticated
+        # calls too. The patched rate makes the second request trip it deterministically.
         url = f"/api/organizations/{self.organization.id}/feature_flags/copy_flags"
         data = {
             "feature_flag_key": self.feature_flag_key,

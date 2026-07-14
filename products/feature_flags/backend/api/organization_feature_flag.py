@@ -18,12 +18,7 @@ from posthog.api.shared import UserBasicSerializer
 from posthog.api.utils import ErrorResponseSerializer, action
 from posthog.models import Team, User
 from posthog.models.filters.filter import Filter
-from posthog.rate_limit import (
-    ClickHouseBurstRateThrottle,
-    ClickHouseSustainedRateThrottle,
-    CopyFlagsBurstRateThrottle,
-    CopyFlagsSustainedRateThrottle,
-)
+from posthog.rate_limit import CopyFlagsBurstRateThrottle, CopyFlagsSustainedRateThrottle
 from posthog.rbac.user_access_control import UserAccessControl
 from posthog.user_permissions import UserPermissions
 from posthog.utils import safe_int
@@ -41,8 +36,9 @@ from products.feature_flags.backend.models.feature_flag import FeatureFlag
 from products.feature_flags.backend.models.scheduled_change import ScheduledChange
 
 # Each target project can create cohorts and a feature flag, so this bounds how much work a
-# single copy_flags call can fan out to. Shared by the request serializer (for OpenAPI docs) and
-# the view (for runtime enforcement) so the two limits can't drift apart.
+# single copy_flags call can fan out to. CopyFlagsRequestSerializer isn't used to validate
+# requests at runtime (only for the OpenAPI schema below), so the view enforces this limit
+# itself; the constant is shared so the documented and enforced limits can't drift apart.
 MAX_COPY_FLAGS_TARGET_PROJECTS = 50
 
 
@@ -296,12 +292,8 @@ class OrganizationFeatureFlagView(
         methods=["post"],
         url_path="copy_flags",
         required_scopes=["feature_flag:write"],
-        # ClickHouse*RateThrottle only throttle personal-API-key requests (parity with other
-        # feature-flag actions); CopyFlags*RateThrottle are UserRateThrottle-based, so they also
-        # cover the session-authenticated bulk-copy UI. Both pairs must pass.
+        # See CopyFlagsBurstRateThrottle in posthog/rate_limit.py for why this needs its own throttle pair.
         throttle_classes=[
-            ClickHouseBurstRateThrottle,
-            ClickHouseSustainedRateThrottle,
             CopyFlagsBurstRateThrottle,
             CopyFlagsSustainedRateThrottle,
         ],
