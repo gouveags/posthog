@@ -23259,7 +23259,10 @@
                 "GoogleChat",
                 "Kickscale",
                 "Zellify",
-                "RudderStack"
+                "RudderStack",
+                "Kajabi",
+                "Shopware",
+                "Dubsado"
             ],
             "type": "string"
         },

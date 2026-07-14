@@ -1944,6 +1944,9 @@ class ExternalDataSourceType(StrEnum):
     KICKSCALE = "Kickscale"
     ZELLIFY = "Zellify"
     RUDDER_STACK = "RudderStack"
+    KAJABI = "Kajabi"
+    SHOPWARE = "Shopware"
+    DUBSADO = "Dubsado"
 
 
 class ExternalQueryErrorCode(StrEnum):

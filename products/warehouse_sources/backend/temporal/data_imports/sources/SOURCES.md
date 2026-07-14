@@ -540,6 +540,7 @@ doesn't conflict with concurrent PRs.
 - dremio
 - dropbox
 - dub
+- dubsado
 - dwolla
 - dynamics365
 - dynamodb
@@ -624,6 +625,7 @@ doesn't conflict with concurrent PRs.
 - judgeme_reviews
 - justsift
 - kafka
+- kajabi
 - kapa_ai
 - keka
 - kernel
@@ -778,6 +780,7 @@ doesn't conflict with concurrent PRs.
 - sharepoint
 - sharetribe
 - shippo
+- shopware
 - shopwired
 - shortio
 - shutterstock

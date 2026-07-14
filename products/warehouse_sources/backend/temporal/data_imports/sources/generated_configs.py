@@ -1128,6 +1128,11 @@ class DubSourceConfig(config.Config):
 
 
 @config.config
+class DubsadoSourceConfig(config.Config):
+    pass
+
+
+@config.config
 class DwollaSourceConfig(config.Config):
     pass
 
@@ -1958,6 +1963,11 @@ class KYVESourceConfig(config.Config):
 
 @config.config
 class KafkaSourceConfig(config.Config):
+    pass
+
+
+@config.config
+class KajabiSourceConfig(config.Config):
     pass
 
 
@@ -3405,6 +3415,11 @@ class ShopifySourceConfig(config.Config):
 
 
 @config.config
+class ShopwareSourceConfig(config.Config):
+    pass
+
+
+@config.config
 class ShortcutSourceConfig(config.Config):
     api_token: str
 
@@ -4447,6 +4462,7 @@ def get_config_for_source(source: ExternalDataSourceType):
         ExternalDataSourceType.DROPBOX: DropboxSourceConfig,
         ExternalDataSourceType.DROPBOXSIGN: DropboxSignSourceConfig,
         ExternalDataSourceType.DUB: DubSourceConfig,
+        ExternalDataSourceType.DUBSADO: DubsadoSourceConfig,
         ExternalDataSourceType.DWOLLA: DwollaSourceConfig,
         ExternalDataSourceType.DYNAMICS365: Dynamics365SourceConfig,
         ExternalDataSourceType.DYNAMODB: DynamoDBSourceConfig,
@@ -4601,6 +4617,7 @@ def get_config_for_source(source: ExternalDataSourceType):
         ExternalDataSourceType.K6CLOUD: K6CloudSourceConfig,
         ExternalDataSourceType.KYVE: KYVESourceConfig,
         ExternalDataSourceType.KAFKA: KafkaSourceConfig,
+        ExternalDataSourceType.KAJABI: KajabiSourceConfig,
         ExternalDataSourceType.KAPAAI: KapaAISourceConfig,
         ExternalDataSourceType.KATANA: KatanaSourceConfig,
         ExternalDataSourceType.KEKA: KekaSourceConfig,
@@ -4869,6 +4886,7 @@ def get_config_for_source(source: ExternalDataSourceType):
         ExternalDataSourceType.SHIPPO: ShippoSourceConfig,
         ExternalDataSourceType.SHOPWIRED: ShopWiredSourceConfig,
         ExternalDataSourceType.SHOPIFY: ShopifySourceConfig,
+        ExternalDataSourceType.SHOPWARE: ShopwareSourceConfig,
         ExternalDataSourceType.SHORTCUT: ShortcutSourceConfig,
         ExternalDataSourceType.SHORTIO: ShortioSourceConfig,
         ExternalDataSourceType.SHUTTERSTOCK: ShutterstockSourceConfig,
