@@ -304,6 +304,7 @@ export enum AccessControlResourceType {
     ActivityLog = 'activity_log',
     ErrorTracking = 'error_tracking',
     Tracing = 'tracing',
+    Toolbar = 'toolbar',
 }
 
 interface UserBaseType {
@@ -5733,6 +5734,7 @@ export type APIScopeObject =
     | 'tagger'
     | 'task'
     | 'ticket'
+    | 'toolbar'
     | 'uploaded_media'
     | 'usage_metric'
     | 'user'
