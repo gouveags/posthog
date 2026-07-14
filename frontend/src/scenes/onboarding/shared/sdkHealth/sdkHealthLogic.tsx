@@ -22,6 +22,7 @@ export type SdkType =
     | 'posthog-go'
     | 'posthog-flutter'
     | 'posthog-react-native'
+    | 'posthog-kmp'
     | 'posthog-dotnet'
     | 'posthog-elixir'
 

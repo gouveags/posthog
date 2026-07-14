@@ -326,7 +326,7 @@ class TestAssessSdkTrafficAlerts(SimpleTestCase):
             _entry("2.0.0", 10, days_ago=5, is_latest=True),
             _entry("1.0.0", 90, days_ago=200),
         ]
-        result = assess_sdk("posthog-ios", "2.0.0", entries, now=NOW)
+        result = assess_sdk("posthog-kmp", "2.0.0", entries, now=NOW)
         assert result is not None
         assert result.outdated_traffic_alerts == []
 

@@ -30,6 +30,7 @@ MOBILE_SDKS: frozenset[str] = frozenset(
         "posthog-android",
         "posthog-flutter",
         "posthog-react-native",
+        "posthog-kmp",
     }
 )
 
@@ -58,6 +59,7 @@ SDK_READABLE_NAME: dict[str, str] = {
     "posthog-go": "Go",
     "posthog-flutter": "Flutter",
     "posthog-react-native": "React Native",
+    "posthog-kmp": "Kotlin Multiplatform",
     "posthog-dotnet": ".NET",
     "posthog-elixir": "Elixir",
 }

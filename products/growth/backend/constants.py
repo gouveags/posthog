@@ -29,6 +29,7 @@ SdkTypes = Literal[
     "posthog-go",
     "posthog-flutter",
     "posthog-react-native",
+    "posthog-kmp",
     "posthog-dotnet",
     "posthog-elixir",
 ]
@@ -43,6 +44,7 @@ SDK_TYPES: list[SdkTypes] = [
     "posthog-go",
     "posthog-flutter",
     "posthog-react-native",
+    "posthog-kmp",
     "posthog-dotnet",
     "posthog-elixir",
 ]

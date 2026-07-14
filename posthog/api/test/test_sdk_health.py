@@ -36,7 +36,7 @@ class TestSdkHealthViewSet(APIBaseTest):
     @patch("posthog.api.sdk_health.get_github_sdk_data")
     def test_happy_path_returns_digested_report(self, mock_github, mock_team) -> None:
         mock_team.return_value = {
-            "posthog-node": [
+            "posthog-kmp": [
                 {
                     "lib_version": "1.0.0",
                     "count": 100,
@@ -45,7 +45,7 @@ class TestSdkHealthViewSet(APIBaseTest):
             ]
         }
         mock_github.return_value = {
-            "posthog-node": {
+            "posthog-kmp": {
                 "latestVersion": "2.0.0",
                 "releaseDates": {"1.0.0": "2025-10-01T00:00:00Z"},
             }
@@ -58,13 +58,13 @@ class TestSdkHealthViewSet(APIBaseTest):
         assert data["needs_updating_count"] == 1
         assert data["overall_health"] == "needs_attention"
         sdk = data["sdks"][0]
-        assert sdk["lib"] == "posthog-node"
-        assert sdk["readable_name"] == "Node.js"
+        assert sdk["lib"] == "posthog-kmp"
+        assert sdk["readable_name"] == "Kotlin Multiplatform"
         assert sdk["is_outdated"] is True
         # UI-parity fields must round-trip through the serializer
         release = sdk["releases"][0]
         assert release["status_reason"].startswith("Released ")
-        assert "posthog-node" in release["sql_query"]
+        assert "posthog-kmp" in release["sql_query"]
         assert release["activity_page_url"].startswith(f"/project/{self.team.pk}/")
 
     @patch("posthog.api.sdk_health.get_team_data")
