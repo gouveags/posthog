@@ -264,6 +264,11 @@ export interface CopyFlagsResponseApi {
     failed: CopyFlagsResultApi[]
 }
 
+export interface ErrorResponseApi {
+    /** Error message */
+    error: string
+}
+
 export interface OrganizationFeatureFlagRowApi {
     /** ID of the representative feature flag for this key */
     id: number
@@ -1178,11 +1183,6 @@ export interface FeatureFlagTestEvaluationResponseApi {
     evaluation_distinct_id: string | null
     /** Detailed analysis of each condition in the feature flag */
     conditions: FeatureFlagConditionAnalysisApi[]
-}
-
-export interface ErrorResponseApi {
-    /** Error message */
-    error: string
 }
 
 export type FeatureFlagVersionResponseApiFilters = { [key: string]: unknown }

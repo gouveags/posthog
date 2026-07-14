@@ -27,6 +27,7 @@ from products.cohorts.backend.models.util import sort_cohorts_topologically
 from products.dashboards.backend.api.dashboard import Dashboard
 from products.early_access_features.backend.models import EarlyAccessFeature
 from products.experiments.backend.models.experiment import Experiment
+from products.feature_flags.backend.api.organization_feature_flag import MAX_COPY_FLAGS_TARGET_PROJECTS
 from products.feature_flags.backend.encrypted_flag_payloads import REDACTED_PAYLOAD_VALUE
 from products.feature_flags.backend.models.feature_flag import FeatureFlag
 from products.feature_flags.backend.models.scheduled_change import ScheduledChange
@@ -785,6 +786,41 @@ class TestOrganizationFeatureFlagCopy(APIBaseTest, QueryMatchingTest):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.json())
+
+    def test_copy_feature_flag_too_many_target_projects(self):
+        url = f"/api/organizations/{self.organization.id}/feature_flags/copy_flags"
+        # One more than the cap. team_2 is a real, writable target, included to prove it gets
+        # nothing even though it would otherwise succeed on its own.
+        target_project_ids = [*range(10_000, 10_000 + MAX_COPY_FLAGS_TARGET_PROJECTS), self.team_2.id]
+        data = {
+            "feature_flag_key": self.feature_flag_key,
+            "from_project": self.team_1.id,
+            "target_project_ids": target_project_ids,
+        }
+        response = self.client.post(url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.json())
+        self.assertFalse(FeatureFlag.objects.filter(key=self.feature_flag_key, team_id=self.team_2.id).exists())
+
+    @patch("posthog.rate_limit.CopyFlagsBurstRateThrottle.rate", new="1/minute")
+    def test_copy_feature_flag_throttles_session_authenticated_requests(self):
+        # ClickHouseBurstRateThrottle only throttles personal-API-key requests, so it would let
+        # the test client's session-authenticated calls through unthrottled. CopyFlagsBurstRateThrottle
+        # is a UserRateThrottle, which keys off request.user for any auth method, so it must catch
+        # this too. The patched rate makes the second request trip it deterministically.
+        url = f"/api/organizations/{self.organization.id}/feature_flags/copy_flags"
+        data = {
+            "feature_flag_key": self.feature_flag_key,
+            "from_project": self.team_1.id,
+            "target_project_ids": [self.team_2.id],
+        }
+
+        first = self.client.post(url, data)
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+
+        second = self.client.post(url, data)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_copy_feature_flag_nonexistent_key(self):
         url = f"/api/organizations/{self.organization.id}/feature_flags/copy_flags"

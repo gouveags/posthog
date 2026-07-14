@@ -6,7 +6,7 @@ from django.db.models import Case, IntegerField, Q, QuerySet, Value, When
 
 import structlog
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.utils.urls import replace_query_param
@@ -15,16 +15,21 @@ from posthog.api.cohort import CohortSerializer
 from posthog.api.documentation import _FallbackSerializer, extend_schema
 from posthog.api.routing import TeamAndOrgViewSetMixin
 from posthog.api.shared import UserBasicSerializer
-from posthog.api.utils import action
+from posthog.api.utils import ErrorResponseSerializer, action
 from posthog.models import Team, User
 from posthog.models.filters.filter import Filter
+from posthog.rate_limit import (
+    ClickHouseBurstRateThrottle,
+    ClickHouseSustainedRateThrottle,
+    CopyFlagsBurstRateThrottle,
+    CopyFlagsSustainedRateThrottle,
+)
 from posthog.rbac.user_access_control import UserAccessControl
 from posthog.user_permissions import UserPermissions
 from posthog.utils import safe_int
 
 from products.approvals.backend.exceptions import ApprovalRequired, PolicyConflict
 from products.approvals.backend.scheduled_changes import gate_scheduled_change
-from products.approvals.backend.exceptions import ApprovalRequired
 from products.cohorts.backend.models.cohort import Cohort, CohortOrEmpty
 from products.feature_flags.backend.api.feature_flag import FeatureFlagSerializer
 from products.feature_flags.backend.encrypted_flag_payloads import (
@@ -35,6 +40,11 @@ from products.feature_flags.backend.flag_analytics import get_cached_evaluations
 from products.feature_flags.backend.models.feature_flag import FeatureFlag
 from products.feature_flags.backend.models.scheduled_change import ScheduledChange
 
+# Each target project can create cohorts and a feature flag, so this bounds how much work a
+# single copy_flags call can fan out to. Shared by the request serializer (for OpenAPI docs) and
+# the view (for runtime enforcement) so the two limits can't drift apart.
+MAX_COPY_FLAGS_TARGET_PROJECTS = 50
+
 
 class CopyFlagsRequestSerializer(serializers.Serializer):
     feature_flag_key = serializers.CharField(required=True, help_text="Key of the feature flag to copy")
@@ -42,7 +52,7 @@ class CopyFlagsRequestSerializer(serializers.Serializer):
     target_project_ids = serializers.ListField(
         child=serializers.IntegerField(),
         required=True,
-        max_length=50,
+        max_length=MAX_COPY_FLAGS_TARGET_PROJECTS,
         help_text="List of target project IDs to copy the flag to",
     )
     copy_schedule = serializers.BooleanField(
@@ -273,9 +283,29 @@ class OrganizationFeatureFlagView(
 
     @extend_schema(
         request=CopyFlagsRequestSerializer,
-        responses={200: CopyFlagsResponseSerializer},
+        responses={
+            200: CopyFlagsResponseSerializer,
+            400: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Missing required fields, or too many target projects",
+            ),
+        },
     )
-    @action(detail=False, methods=["post"], url_path="copy_flags", required_scopes=["feature_flag:write"])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="copy_flags",
+        required_scopes=["feature_flag:write"],
+        # ClickHouse*RateThrottle only throttle personal-API-key requests (parity with other
+        # feature-flag actions); CopyFlags*RateThrottle are UserRateThrottle-based, so they also
+        # cover the session-authenticated bulk-copy UI. Both pairs must pass.
+        throttle_classes=[
+            ClickHouseBurstRateThrottle,
+            ClickHouseSustainedRateThrottle,
+            CopyFlagsBurstRateThrottle,
+            CopyFlagsSustainedRateThrottle,
+        ],
+    )
     def copy_flags(self, request, *args, **kwargs):
         body = request.data
         feature_flag_key = body.get("feature_flag_key")
@@ -286,6 +316,15 @@ class OrganizationFeatureFlagView(
 
         if not feature_flag_key or not from_project or not target_project_ids:
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(target_project_ids) > MAX_COPY_FLAGS_TARGET_PROJECTS:
+            return Response(
+                {
+                    "error": f"Too many target projects: {len(target_project_ids)} provided, "
+                    f"but a single copy_flags call supports at most {MAX_COPY_FLAGS_TARGET_PROJECTS}."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Fetch the flag to copy
         try:
