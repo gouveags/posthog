@@ -212,6 +212,7 @@ the row lists both.
 | hugging_face              | HTTP                        | requests                                                        | ✅                          |
 | huntr                     | HTTP                        | requests                                                        | ✅                          |
 | incident_io               | HTTP                        | requests                                                        | ✅                          |
+| infisical                 | HTTP                        | requests                                                        | ✅                          |
 | inflowinventory           | HTTP                        | requests                                                        | ✅                          |
 | insightly                 | HTTP                        | requests                                                        | ✅                          |
 | instatus                  | HTTP                        | requests                                                        | ✅                          |
@@ -612,7 +613,6 @@ doesn't conflict with concurrent PRs.
 - illumina_basespace
 - imagga
 - impact
-- infisical
 - infor_nexus
 - inngest
 - insightful
