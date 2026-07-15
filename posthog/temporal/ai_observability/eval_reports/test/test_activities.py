@@ -1,12 +1,14 @@
 import datetime as dt
 
-from posthog.test.base import BaseTest
+from posthog.test.base import BaseTest, ClickhouseTestMixin, _create_event
 from unittest.mock import Mock, patch
 
 from django.utils import timezone
 
+from posthog.models import Team
 from posthog.temporal.ai_observability.eval_reports.activities import (
     _check_count_triggered_eval_report_sync,
+    _check_count_triggered_eval_reports_batch,
     _fetch_count_triggered_eval_report_candidate_ids,
     _period_for_scheduled_report,
 )
@@ -229,6 +231,28 @@ class TestCountTriggeredReportChecks(BaseTest):
         self.assertEqual(result.skipped_reason, "daily_cap")
         execute_hogql_query.assert_not_called()
 
+    def test_batch_skips_gated_reports_without_clickhouse_and_preserves_order(self):
+        # Every Postgres-gated report must be resolved without touching ClickHouse — that's
+        # the whole point of the batched path (stop firing count queries for reports we'll skip).
+        now = timezone.now()
+        not_deliverable = self._create_report(enabled=False)
+        cooldown = self._create_report(last_delivered_at=now - dt.timedelta(minutes=5), cooldown_minutes=60)
+        daily_cap = self._create_report(daily_run_cap=1)
+        EvaluationReportRun.objects.create(
+            report=daily_cap,
+            period_start=now - dt.timedelta(hours=1),
+            period_end=now,
+        )
+
+        report_ids = [str(not_deliverable.id), str(cooldown.id), str(daily_cap.id)]
+        with patch("posthog.hogql.query.execute_hogql_query") as execute_hogql_query:
+            results = _check_count_triggered_eval_reports_batch(report_ids, now)
+
+        execute_hogql_query.assert_not_called()
+        self.assertEqual([r.report_id for r in results], report_ids)
+        self.assertEqual([r.skipped_reason for r in results], ["not_deliverable", "cooldown", "daily_cap"])
+        self.assertTrue(all(r.due is False for r in results))
+
 
 class TestPeriodForScheduledReport(BaseTest):
     """Unit-ish tests for the rrule period helper — uses in-memory instances to
@@ -283,3 +307,106 @@ class TestPeriodForScheduledReport(BaseTest):
         now = dt.datetime(2026, 3, 8, 18, 0, tzinfo=dt.UTC)  # 14:00 EDT, after 9am EDT fire
         period = _period_for_scheduled_report(report, now)
         self.assertEqual(period, dt.timedelta(hours=23))
+
+
+class TestBatchedCountTriggeredQuery(ClickhouseTestMixin, BaseTest):
+    """Exercises the batched count check against real ClickHouse events — no query mocking —
+    so it guards the properties Carlos cares about: each report's count is identical to the
+    single-report query (right evaluation, right `since` window, right threshold)."""
+
+    # Window anchor; reports use this as `since` (via last_delivered_at) unless overridden.
+    T0 = dt.datetime(2026, 6, 1, 9, 0, tzinfo=dt.UTC)
+    NOW = dt.datetime(2026, 6, 1, 12, 0, tzinfo=dt.UTC)
+
+    def _create_report(self, team: Team, *, threshold: int, since: dt.datetime, name: str) -> EvaluationReport:
+        evaluation = Evaluation.objects.create(
+            team=team,
+            name=name,
+            evaluation_type="llm_judge",
+            evaluation_config={"prompt": "test prompt"},
+            output_type="boolean",
+            output_config={},
+            enabled=True,
+            conditions=[{"id": "c1", "rollout_percentage": 100, "properties": []}],
+        )
+        return EvaluationReport.objects.create(
+            team=team,
+            evaluation=evaluation,
+            frequency=EvaluationReport.Frequency.EVERY_N,
+            rrule="",
+            starts_at=None,
+            trigger_threshold=threshold,
+            # since = last_delivered_at; cooldown default is 60min and NOW is 3h later, so it passes.
+            last_delivered_at=since,
+            delivery_targets=[{"type": "email", "value": "test@example.com"}],
+        )
+
+    def _emit_eval_events(self, team: Team, evaluation_id: str, timestamps: list[dt.datetime]) -> None:
+        for index, ts in enumerate(timestamps):
+            _create_event(
+                team=team,
+                event="$ai_evaluation",
+                distinct_id=f"d-{evaluation_id}-{index}",
+                timestamp=ts,
+                properties={"$ai_evaluation_id": evaluation_id},
+            )
+
+    def test_counts_respect_since_evaluation_and_threshold(self):
+        # A: 2 events in-window (threshold 2) -> due. One event before `since` must be excluded.
+        report_a = self._create_report(self.team, threshold=2, since=self.T0, name="A")
+        self._emit_eval_events(
+            self.team,
+            str(report_a.evaluation_id),
+            [self.T0 - dt.timedelta(hours=1), self.T0 + dt.timedelta(hours=1), self.T0 + dt.timedelta(hours=2)],
+        )
+        # B: same window as A but threshold 5 with only 2 events -> not due. Guards against
+        # B's count picking up A's events (evaluation isolation).
+        report_b = self._create_report(self.team, threshold=5, since=self.T0, name="B")
+        self._emit_eval_events(
+            self.team,
+            str(report_b.evaluation_id),
+            [self.T0 + dt.timedelta(hours=1), self.T0 + dt.timedelta(hours=2)],
+        )
+        # C: later `since` (11:00) than A/B — its only event (10:00) predates its window, so 0 -> not due.
+        # This proves each report applies its OWN since, not a shared one.
+        report_c = self._create_report(self.team, threshold=1, since=self.T0 + dt.timedelta(hours=2), name="C")
+        self._emit_eval_events(self.team, str(report_c.evaluation_id), [self.T0 + dt.timedelta(hours=1)])
+
+        report_ids = [str(report_a.id), str(report_b.id), str(report_c.id)]
+        results = _check_count_triggered_eval_reports_batch(report_ids, self.NOW)
+
+        due_by_id = {r.report_id: r.due for r in results}
+        self.assertEqual([r.report_id for r in results], report_ids)
+        self.assertTrue(due_by_id[str(report_a.id)])
+        self.assertFalse(due_by_id[str(report_b.id)])
+        self.assertFalse(due_by_id[str(report_c.id)])
+
+    def test_counts_are_scoped_per_team(self):
+        # One report per team, each with a single in-window event and threshold 1. If the batch
+        # ran both against one team's data, the other team's report would count 0 and be not-due.
+        report_a = self._create_report(self.team, threshold=1, since=self.T0, name="team1")
+        self._emit_eval_events(self.team, str(report_a.evaluation_id), [self.T0 + dt.timedelta(hours=1)])
+
+        other_team = Team.objects.create(organization=self.organization, name="other")
+        report_b = self._create_report(other_team, threshold=1, since=self.T0, name="team2")
+        self._emit_eval_events(other_team, str(report_b.evaluation_id), [self.T0 + dt.timedelta(hours=1)])
+
+        results = _check_count_triggered_eval_reports_batch([str(report_a.id), str(report_b.id)], self.NOW)
+
+        due_by_id = {r.report_id: r.due for r in results}
+        self.assertTrue(due_by_id[str(report_a.id)])
+        self.assertTrue(due_by_id[str(report_b.id)])
+
+    def test_width_chunking_returns_all_counts(self):
+        # Force one countIf column per query so the per-team entries span multiple chunks;
+        # a chunk-merge bug (dropped/overwritten counts) would leave some report not-due.
+        reports = [self._create_report(self.team, threshold=1, since=self.T0, name=f"r{i}") for i in range(3)]
+        for report in reports:
+            self._emit_eval_events(self.team, str(report.evaluation_id), [self.T0 + dt.timedelta(hours=1)])
+
+        report_ids = [str(report.id) for report in reports]
+        with patch("posthog.temporal.ai_observability.eval_reports.activities.COUNT_TRIGGER_QUERY_WIDTH", 1):
+            results = _check_count_triggered_eval_reports_batch(report_ids, self.NOW)
+
+        self.assertEqual([r.report_id for r in results], report_ids)
+        self.assertTrue(all(r.due for r in results))
