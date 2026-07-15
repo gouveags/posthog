@@ -3682,7 +3682,8 @@ class SenseforceSourceConfig(config.Config):
 
 @config.config
 class SentineloneSourceConfig(config.Config):
-    pass
+    console_url: str
+    api_token: str
 
 
 @config.config
