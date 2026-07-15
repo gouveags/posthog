@@ -403,6 +403,7 @@ the row lists both.
 | svix                      | HTTP                        | requests                                                        | ✅                          |
 | taboola                   | HTTP                        | requests                                                        | ✅                          |
 | tavus                     | HTTP                        | requests                                                        | ✅                          |
+| tawk_to                   | HTTP                        | requests                                                        | ✅                          |
 | teamtailor                | HTTP                        | requests                                                        | ✅                          |
 | teamwork                  | HTTP                        | requests                                                        | ✅                          |
 | tempo                     | HTTP                        | requests                                                        | ✅                          |

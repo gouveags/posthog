@@ -4096,7 +4096,8 @@ class TavusSourceConfig(config.Config):
 
 @config.config
 class TawkToSourceConfig(config.Config):
-    pass
+    api_key: str
+    property_id: str | None = None
 
 
 @config.config
