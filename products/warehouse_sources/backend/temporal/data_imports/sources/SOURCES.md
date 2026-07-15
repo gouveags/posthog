@@ -426,6 +426,7 @@ the row lists both.
 | vantage                   | HTTP                        | requests                                                        | ✅                          |
 | vapi                      | HTTP                        | requests                                                        | ✅                          |
 | vellum                    | HTTP                        | requests                                                        | ✅                          |
+| veracode                  | HTTP                        | requests (custom HMAC signing)                                  | ✅                          |
 | vercel                    | HTTP                        | requests                                                        | ✅                          |
 | vitally                   | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | webflow                   | HTTP                        | requests                                                        | ✅                          |
@@ -935,7 +936,6 @@ doesn't conflict with concurrent PRs.
 - usersnap
 - uservoice
 - veeqo
-- veracode
 - vespa
 - visma_economic
 - vultr
