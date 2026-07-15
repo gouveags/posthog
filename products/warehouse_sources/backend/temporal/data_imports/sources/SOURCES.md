@@ -188,6 +188,7 @@ the row lists both.
 | fulcrum                   | HTTP                        | requests                                                        | ✅                          |
 | fullstory                 | HTTP                        | requests                                                        | ✅                          |
 | gainsight_px              | HTTP                        | requests                                                        | ✅                          |
+| gerrit                    | HTTP                        | requests                                                        | ✅                          |
 | gitbook                   | HTTP                        | requests                                                        | ✅                          |
 | github                    | HTTP + Webhook              | requests + `WebhookSourceManager`                               | ✅ (pull) / ➖ (webhook)    |
 | giphy                     | HTTP                        | requests                                                        | ✅                          |
@@ -620,7 +621,6 @@ doesn't conflict with concurrent PRs.
 - freshservice
 - frill
 - fulcrum
-- gerrit
 - gitea
 - gitguardian
 - glassfrog
