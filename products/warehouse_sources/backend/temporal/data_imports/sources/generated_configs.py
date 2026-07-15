@@ -1233,7 +1233,8 @@ class DopplerSourceConfig(config.Config):
 
 @config.config
 class DrataSourceConfig(config.Config):
-    pass
+    api_key: str
+    region: Literal["US", "EU", "APAC"] = config.value(default="US")
 
 
 @config.config
