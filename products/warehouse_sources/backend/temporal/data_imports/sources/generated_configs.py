@@ -2180,7 +2180,9 @@ class KafkaSourceConfig(config.Config):
 
 @config.config
 class KandjiSourceConfig(config.Config):
-    pass
+    api_token: str
+    subdomain: str
+    region: Literal["us", "eu"] = config.value(default="us")
 
 
 @config.config
