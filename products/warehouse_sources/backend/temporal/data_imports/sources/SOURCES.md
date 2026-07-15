@@ -335,6 +335,7 @@ the row lists both.
 | plaid                     | HTTP                        | requests                                                        | ✅                          |
 | postgres                  | DB protocol                 | psycopg                                                         | ➖                          |
 | postmark                  | HTTP                        | requests                                                        | ✅                          |
+| prefect_cloud             | HTTP                        | requests                                                        | ✅                          |
 | pretix                    | HTTP                        | requests                                                        | ✅                          |
 | printify                  | HTTP                        | requests                                                        | ✅                          |
 | productboard              | HTTP                        | requests                                                        | ✅                          |
@@ -790,7 +791,6 @@ doesn't conflict with concurrent PRs.
 - podium
 - polygon
 - poplar
-- prefect_cloud
 - prestashop
 - primetric
 - productive
