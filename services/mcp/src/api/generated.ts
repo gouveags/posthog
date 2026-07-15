@@ -67309,7 +67309,7 @@ export namespace Schemas {
      */
     offset?: number;
     /**
-     * Sort scanners by name, created_at, updated_at, scanner_type, enabled, sampling_rate, or created_by. Prefix with `-` for descending.
+     * Sort scanners by name, created_at, updated_at, scanner_type, enabled, sampling_rate, created_by, credits_this_month. Prefix with `-` for descending.
      */
     order_by?: string;
     /**
@@ -75829,7 +75829,7 @@ export namespace Schemas {
      */
     offset?: number;
     /**
-     * Sort scanners by name, created_at, updated_at, scanner_type, enabled, sampling_rate, or created_by. Prefix with `-` for descending.
+     * Sort scanners by name, created_at, updated_at, scanner_type, enabled, sampling_rate, created_by, credits_this_month. Prefix with `-` for descending.
      */
     order_by?: string;
     /**
