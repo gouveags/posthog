@@ -321,7 +321,7 @@ def _count_eval_results_for_reports(
     only narrows the scan (its `IN` set and `min(since)` never exclude a row any countIf
     would have counted). Returns {key: count}.
     """
-    from posthog.hogql.parser import parse_select
+    from posthog.hogql.parser import parse_expr, parse_select
     from posthog.hogql.query import execute_hogql_query
 
     from posthog.clickhouse.query_tagging import Feature, Product, tags_context
@@ -329,35 +329,35 @@ def _count_eval_results_for_reports(
     if not entries:
         return {}
 
-    # Datetimes go in as ast.Constant so HogQL prints toDateTime64(..., 6, <team_tz>),
-    # matching the single-report query; a bare string would shift by the team's offset.
-    select_exprs: list[str] = []
-    placeholders: dict[str, ast.Expr] = {}
-    for index, (_key, evaluation_id, since) in enumerate(entries):
-        select_exprs.append(
-            f"countIf(properties.$ai_evaluation_id = {{evaluation_id_{index}}} "
-            f"AND timestamp >= {{since_{index}}}) AS count_{index}"
+    # One countIf column per entry, built via parse_expr with ast.Constant placeholders (no
+    # string interpolation, so it's injection-safe). Datetimes go in as ast.Constant so HogQL
+    # prints toDateTime64(..., 6, <team_tz>), matching the single-report query — a bare string
+    # would shift by the team's offset. Results are read positionally, so no aliases are needed.
+    select_columns: list[ast.Expr] = [
+        parse_expr(
+            "countIf(properties.$ai_evaluation_id = {evaluation_id} AND timestamp >= {since})",
+            placeholders={
+                "evaluation_id": ast.Constant(value=evaluation_id),
+                "since": ast.Constant(value=since),
+            },
         )
-        placeholders[f"evaluation_id_{index}"] = ast.Constant(value=evaluation_id)
-        placeholders[f"since_{index}"] = ast.Constant(value=since)
+        for _key, evaluation_id, since in entries
+    ]
 
+    # Shared scan filter: the IN set and min(since) only narrow the scan and never exclude a
+    # row any countIf would have counted.
     unique_evaluation_ids = list(dict.fromkeys(evaluation_id for _key, evaluation_id, _since in entries))
-    in_terms: list[str] = []
-    for index, evaluation_id in enumerate(unique_evaluation_ids):
-        placeholders[f"in_evaluation_id_{index}"] = ast.Constant(value=evaluation_id)
-        in_terms.append(f"{{in_evaluation_id_{index}}}")
-    placeholders["min_since"] = ast.Constant(value=min(since for _key, _evaluation_id, since in entries))
-
     query = parse_select(
-        f"""
-        SELECT {", ".join(select_exprs)}
-        FROM events
-        WHERE event = '$ai_evaluation'
-            AND properties.$ai_evaluation_id IN ({", ".join(in_terms)})
-            AND timestamp >= {{min_since}}
-        """,
-        placeholders=placeholders,
+        "SELECT 1 FROM events WHERE event = '$ai_evaluation' "
+        "AND properties.$ai_evaluation_id IN {evaluation_ids} AND timestamp >= {min_since}",
+        placeholders={
+            "evaluation_ids": ast.Tuple(exprs=[ast.Constant(value=e) for e in unique_evaluation_ids]),
+            "min_since": ast.Constant(value=min(since for _key, _evaluation_id, since in entries)),
+        },
     )
+    # Replace the placeholder projection with the per-entry count columns.
+    query.select = select_columns
+
     with tags_context(product=Product.LLM_ANALYTICS, feature=Feature.ENRICHMENT, team_id=team.pk):
         result = execute_hogql_query(query=query, team=team, workload=Workload.OFFLINE)
 
