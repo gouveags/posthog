@@ -2148,7 +2148,9 @@ class JudgeMeReviewsSourceConfig(config.Config):
 
 @config.config
 class JumpcloudSourceConfig(config.Config):
-    pass
+    api_key: str
+    region: Literal["us", "eu"] = config.value(default="us")
+    org_id: str | None = None
 
 
 @config.config
