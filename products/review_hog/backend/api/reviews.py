@@ -482,7 +482,7 @@ class ReviewRecentReviewsViewSet(TeamAndOrgViewSetMixin, viewsets.GenericViewSet
         try:
             report_uuid = uuid.UUID(str(pk))
         except ValueError:
-            raise NotFound("Review not found.")
+            raise NotFound("Review not found.")  # noqa: B904
         team_id, queryset = self._reports(request)
         # Detail describes a completed turn — a first run still in flight has nothing to show yet.
         report = queryset.filter(id=report_uuid, last_run_at__isnull=False).first()
