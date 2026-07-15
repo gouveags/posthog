@@ -2352,7 +2352,7 @@ class LinearSourceConfig(config.Config):
 
 @config.config
 class LinearbSourceConfig(config.Config):
-    pass
+    api_key: str
 
 
 @config.config
