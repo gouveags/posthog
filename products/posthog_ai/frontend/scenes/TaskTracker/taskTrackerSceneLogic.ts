@@ -312,9 +312,10 @@ export const taskTrackerSceneLogic = kea<taskTrackerSceneLogicType>([
             actions.setActiveCreation({ streamKey: runId, taskId: values.activeCreation.taskId, runId })
         },
         // A seed arriving while this composer is already mounted (the panel was open when the host set it).
-        // The action type is shared across keys, so each instance re-checks its own keyed `seed` and no-ops
-        // when it isn't the target.
-        [composerSeedLogic.actionTypes.setSeed]: () => {
+        // Keyed action types embed the key, so bind to this instance's paired seed logic via `props` — the
+        // bare `composerSeedLogic.actionTypes` resolves to the default 'scene' key and would leave every
+        // embedded (panelId) instance deaf to its own seeds.
+        [composerSeedLogic(props).actionTypes.setSeed]: () => {
             actions.applyComposerSeed()
         },
         applyComposerSeed: () => {

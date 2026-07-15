@@ -5,6 +5,7 @@ import { SidePanelTab } from '~/types'
 
 import { ComposerSeed, composerSeedLogic } from 'products/posthog_ai/frontend/api/logics'
 
+import { maxGlobalLogic } from './maxGlobalLogic'
 import { parseCommandString } from './maxLogic'
 import type { phaiSidePanelComposerSeedLogicType } from './phaiSidePanelComposerSeedLogicType'
 
@@ -16,7 +17,11 @@ export interface PhaiSidePanelComposerSeedLogicProps {
 // Parse the side-panel option string exactly as legacy Max does (`mode=` stripped, leading `!` = auto-run)
 // and forward the prompt to the surface seam. Reusing `parseCommandString` keeps the `!` convention
 // byte-for-byte identical to the legacy consumer; only the prompt + auto-submit flag cross into the surface.
-function forwardSeed(options: string | null | undefined, setSeed: (seed: ComposerSeed) => void): void {
+function forwardSeed(
+    options: string | null | undefined,
+    dataProcessingAccepted: boolean,
+    setSeed: (seed: ComposerSeed) => void
+): void {
     if (typeof options !== 'string') {
         return
     }
@@ -24,7 +29,10 @@ function forwardSeed(options: string | null | undefined, setSeed: (seed: Compose
     if (!question) {
         return
     }
-    setSeed({ prompt: question, autoSubmit: autoRun })
+    // Same org-level AI data-processing consent gate as the legacy `askMax` path: without approval an
+    // auto-run seed only prefills the composer — it never starts an agent run. The user's own send then
+    // goes through the composer's consent flow.
+    setSeed({ prompt: question, autoSubmit: autoRun && dataProcessingAccepted })
 }
 
 /**
@@ -42,16 +50,21 @@ export const phaiSidePanelComposerSeedLogic = kea<phaiSidePanelComposerSeedLogic
     key((props) => props.panelId),
 
     connect((props: PhaiSidePanelComposerSeedLogicProps) => ({
-        values: [sidePanelStateLogic, ['selectedTab', 'selectedTabOptions']],
+        values: [
+            sidePanelStateLogic,
+            ['selectedTab', 'selectedTabOptions'],
+            maxGlobalLogic,
+            ['dataProcessingAccepted'],
+        ],
         actions: [composerSeedLogic({ panelId: props.panelId }), ['setSeed']],
     })),
 
-    listeners(({ actions }) => ({
+    listeners(({ actions, values }) => ({
         [sidePanelStateLogic.actionTypes.openSidePanel]: ({ tab, options }) => {
             if (tab !== SidePanelTab.Max) {
                 return
             }
-            forwardSeed(options, actions.setSeed)
+            forwardSeed(options, values.dataProcessingAccepted, actions.setSeed)
         },
     })),
 
@@ -59,7 +72,7 @@ export const phaiSidePanelComposerSeedLogic = kea<phaiSidePanelComposerSeedLogic
         // A CTA fires `openSidePanel` before this panel mounts, so the prompt is already sitting on
         // `sidePanelStateLogic` by the time we mount — pick it up (mirrors legacy maxLogic's afterMount read).
         if (values.selectedTab === SidePanelTab.Max) {
-            forwardSeed(values.selectedTabOptions, actions.setSeed)
+            forwardSeed(values.selectedTabOptions, values.dataProcessingAccepted, actions.setSeed)
         }
     }),
 ])
