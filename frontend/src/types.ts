@@ -4903,6 +4903,9 @@ export interface Experiment {
     conclusion?: ExperimentConclusion | null
     conclusion_comment?: string | null
     user_access_level: AccessControlLevel
+    /** Optimistic-concurrency token, bumped by the server on every update. Send the last-read
+     * value with updates so concurrent edits are detected (409) or merged instead of clobbered. */
+    version?: number | null
 }
 
 export interface ExperimentVelocityStats {
