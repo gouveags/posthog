@@ -47,6 +47,7 @@ class Migration(migrations.Migration):
                     "created_by",
                     models.ForeignKey(
                         blank=True,
+                        db_constraint=False,
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         to=settings.AUTH_USER_MODEL,
@@ -54,7 +55,11 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "team",
-                    models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to="posthog.team"),
+                    models.ForeignKey(
+                        db_constraint=False,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="posthog.team",
+                    ),
                 ),
             ],
             options={
