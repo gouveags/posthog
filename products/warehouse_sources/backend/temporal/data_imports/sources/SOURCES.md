@@ -215,6 +215,7 @@ the row lists both.
 | height                    | HTTP                        | requests                                                        | ✅                          |
 | hellobaton                | HTTP                        | requests                                                        | ✅                          |
 | hibob                     | HTTP                        | requests                                                        | ✅                          |
+| honeybadger               | HTTP                        | requests                                                        | ✅                          |
 | humanitix                 | HTTP                        | requests                                                        | ✅                          |
 | hubplanner                | HTTP                        | requests                                                        | ✅                          |
 | hubspot                   | HTTP                        | requests                                                        | ✅                          |
@@ -657,7 +658,6 @@ doesn't conflict with concurrent PRs.
 - hibob
 - high_level
 - hightouch
-- honeybadger
 - honeycomb
 - hoorayhr
 - hubplanner
