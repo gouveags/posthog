@@ -120,6 +120,7 @@ the row lists both.
 | chartmogul                | HTTP                        | requests                                                        | ✅                          |
 | circleci                  | HTTP                        | requests                                                        | ✅                          |
 | cimis                     | HTTP                        | requests                                                        | ✅                          |
+| cisco_duo                 | HTTP                        | requests (hand-rolled HMAC-SHA1 request signing)                | ✅                          |
 | cloudflare                | HTTP                        | requests                                                        | ✅                          |
 | clari                     | HTTP                        | requests                                                        | ✅                          |
 | clerk                     | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
@@ -545,7 +546,6 @@ doesn't conflict with concurrent PRs.
 - chorus
 - cin7
 - circleci_insights
-- cisco_duo
 - cisco_meraki
 - clarifai
 - clazar
