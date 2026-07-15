@@ -1109,7 +1109,8 @@ class DatadogSourceConfig(config.Config):
 
 @config.config
 class DatahubSourceConfig(config.Config):
-    pass
+    instance_url: str
+    api_token: str
 
 
 @config.config

@@ -138,6 +138,7 @@ the row lists both.
 | cursor                    | HTTP                        | requests                                                        | ✅                          |
 | customer_io               | HTTP + Webhook              | requests + `WebhookSourceManager`                               | ✅ (App API) / ➖ (webhook) |
 | datadog                   | HTTP                        | requests                                                        | ✅                          |
+| datahub                   | HTTP                        | requests                                                        | ✅                          |
 | decagon                   | HTTP                        | requests                                                        | ✅                          |
 | deel                      | HTTP                        | requests                                                        | ✅                          |
 | deepgram                  | HTTP                        | requests                                                        | ✅                          |
@@ -570,7 +571,6 @@ doesn't conflict with concurrent PRs.
 - customerly
 - dagster_cloud
 - databricks
-- datahub
 - datascope
 - datorama
 - db2
