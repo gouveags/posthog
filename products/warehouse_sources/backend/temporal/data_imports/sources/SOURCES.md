@@ -189,6 +189,7 @@ the row lists both.
 | fullstory                 | HTTP                        | requests                                                        | ✅                          |
 | gainsight_px              | HTTP                        | requests                                                        | ✅                          |
 | gitbook                   | HTTP                        | requests                                                        | ✅                          |
+| gitea                     | HTTP + Webhook              | requests + `WebhookSourceManager`                               | ✅ (pull) / ➖ (webhook)    |
 | github                    | HTTP + Webhook              | requests + `WebhookSourceManager`                               | ✅ (pull) / ➖ (webhook)    |
 | giphy                     | HTTP                        | requests                                                        | ✅                          |
 | gitlab                    | HTTP                        | requests                                                        | ✅                          |
@@ -621,7 +622,6 @@ doesn't conflict with concurrent PRs.
 - frill
 - fulcrum
 - gerrit
-- gitea
 - gitguardian
 - glassfrog
 - gmail
