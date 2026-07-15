@@ -411,17 +411,6 @@ export class SesWebhookHandler {
             teamId?: string
             emailAddresses: string[]
         }[]
-        // Soft (Transient) bounces — fed into the suppression list's consecutive-bounce counter.
-        transientBounceRecipients?: {
-            teamId?: string
-            emailAddresses: string[]
-            diagnostic?: string
-        }[]
-        // Successful deliveries — reset the suppression counter so transient outages don't accumulate.
-        deliveredRecipients?: {
-            teamId?: string
-            emailAddresses: string[]
-        }[]
     }> {
         logger.info('[SesWebhookHandler] handleWebhook', { body: opts.body, headers: opts.headers })
         const parsed = this.parseIncomingBody(opts.body)
@@ -489,15 +478,6 @@ export class SesWebhookHandler {
             message: string
         }[] = []
         const optOutRecipients: {
-            teamId?: string
-            emailAddresses: string[]
-        }[] = []
-        const transientBounceRecipients: {
-            teamId?: string
-            emailAddresses: string[]
-            diagnostic?: string
-        }[] = []
-        const deliveredRecipients: {
             teamId?: string
             emailAddresses: string[]
         }[] = []
@@ -585,33 +565,8 @@ export class SesWebhookHandler {
                 const emails = rec.bounce.bouncedRecipients.map((r) => r.emailAddress)
                 optOutRecipients.push({ teamId, emailAddresses: emails })
             }
-
-            // Count soft (Transient) bounces toward suppression. These are recipient-side failures
-            // (server unreachable, mailbox full, greylisting); one is harmless but a persistent run
-            // of them means the address can't receive mail.
-            if (teamId && rec.eventType === 'Bounce' && rec.bounce.bounceType === 'Transient') {
-                const emails = rec.bounce.bouncedRecipients.map((r) => r.emailAddress)
-                const diagnostic = rec.bounce.bouncedRecipients.find((r) => r.diagnosticCode)?.diagnosticCode
-                transientBounceRecipients.push({ teamId, emailAddresses: emails, diagnostic })
-            }
-
-            // Successful delivery resets an address's soft-bounce counter.
-            if (teamId && rec.eventType === 'Delivery') {
-                const emails = rec.delivery.recipients ?? rec.mail.destination ?? []
-                if (emails.length > 0) {
-                    deliveredRecipients.push({ teamId, emailAddresses: emails })
-                }
-            }
         }
 
-        return {
-            status: 200,
-            body: { ok: true },
-            metrics,
-            logEntries,
-            optOutRecipients,
-            transientBounceRecipients,
-            deliveredRecipients,
-        }
+        return { status: 200, body: { ok: true }, metrics, logEntries, optOutRecipients }
     }
 }

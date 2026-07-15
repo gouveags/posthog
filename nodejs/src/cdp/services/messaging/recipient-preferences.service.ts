@@ -3,17 +3,13 @@ import { logger } from '~/common/utils/logger'
 
 import { CyclotronJobInvocationHogFunction } from '../../types'
 import { RecipientsManagerService } from '../managers/recipients-manager.service'
-import { EmailSuppressionService } from './email-suppression.service'
 
 type MessageFunctionActionType = 'function_email' | 'function_sms' | 'function_push'
 
 type MessageAction = Extract<HogFlowAction, { type: MessageFunctionActionType }>
 
 export class RecipientPreferencesService {
-    constructor(
-        private recipientsManager: RecipientsManagerService,
-        private emailSuppressionService: EmailSuppressionService
-    ) {}
+    constructor(private recipientsManager: RecipientsManagerService) {}
 
     public async shouldSkipAction(
         invocation: CyclotronJobInvocationHogFunction,
@@ -23,13 +19,6 @@ export class RecipientPreferencesService {
             return false
         }
 
-        // Suppression is a deliverability signal, not a messaging preference: an address that can't
-        // receive mail can't receive it regardless of category. So we check it even for
-        // transactional messages, and before the transactional opt-out bypass below.
-        if (await this.isRecipientSuppressed(invocation, action)) {
-            return true
-        }
-
         // Transactional messages are not eligible for opt-outs, so they send regardless of
         // whether the recipient has opted out of this category or of all marketing messaging.
         if (action.config.message_category_type === 'transactional') {
@@ -37,27 +26,6 @@ export class RecipientPreferencesService {
         }
 
         return await this.isRecipientOptedOutOfAction(invocation, action)
-    }
-
-    private async isRecipientSuppressed(
-        invocation: CyclotronJobInvocationHogFunction,
-        action: MessageAction
-    ): Promise<boolean> {
-        // Suppression is driven by email bounces, so it only applies to email sends.
-        if (action.type !== 'function_email') {
-            return false
-        }
-        const email = invocation.state.globals.inputs?.email?.to?.email
-        if (typeof email !== 'string' || email.trim().length === 0) {
-            return false
-        }
-        try {
-            return await this.emailSuppressionService.isSuppressed(invocation.teamId, email)
-        } catch (error) {
-            // Fail open — never block a send on a suppression-lookup error.
-            logger.error(`Failed to check suppression list for ${email}:`, error)
-            return false
-        }
     }
 
     private isSubjectToRecipientPreferences(action: HogFlowAction): action is MessageAction {

@@ -314,27 +314,6 @@ describe('SesWebhookHandler', () => {
         expect(result.metrics?.[0].metricName).toBe('email_bounced')
         expect(result.metrics?.[0].distinctId).toBe('user-123')
         expect(result.optOutRecipients).toEqual([])
-        // Soft bounces are surfaced separately so the suppression list can count them.
-        expect(result.transientBounceRecipients).toEqual([
-            { teamId: '1', emailAddresses: ['to@example.com'], diagnostic: 'temp' },
-        ])
-    })
-
-    it('surfaces delivered recipients so the suppression counter can reset', async () => {
-        const body = [
-            {
-                eventType: 'Delivery',
-                mail: baseMail,
-                delivery: {
-                    timestamp: '2025-10-03T12:04:00Z',
-                    recipients: ['to@example.com'],
-                },
-            },
-        ]
-        const result = await handler.handleWebhook({ body, headers: {} })
-        expect(result.status).toBe(200)
-        expect(result.deliveredRecipients).toEqual([{ teamId: '1', emailAddresses: ['to@example.com'] }])
-        expect(result.transientBounceRecipients).toEqual([])
     })
 
     it('rejects raw (non-SNS) deliveries when signature verification is required', async () => {

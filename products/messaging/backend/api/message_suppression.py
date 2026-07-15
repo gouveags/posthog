@@ -58,11 +58,11 @@ class MessageSuppressionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
     @action(detail=False, methods=["get"])
     def suppressions(self, request, **kwargs):
         """List suppressed recipients for the team, most recently updated first."""
-        suppressions = MessageSuppression.objects.filter(
-            team_id=self.team_id,
-            suppressed=True,
-            deleted=False,
-        ).order_by("-updated_at")
+        suppressions = (
+            MessageSuppression.objects.for_team(self.team_id)
+            .filter(suppressed=True, deleted=False)
+            .order_by("-updated_at")
+        )
 
         paginator = SuppressionPagination()
         page = paginator.paginate_queryset(suppressions, request)
@@ -86,7 +86,7 @@ class MessageSuppressionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
 
         identifier = serializer.validated_data["identifier"].strip().lower()
 
-        suppression, created = MessageSuppression.objects.get_or_create(
+        suppression, created = MessageSuppression.objects.for_team(self.team_id).get_or_create(
             team_id=self.team_id,
             identifier=identifier,
             defaults={
@@ -126,7 +126,7 @@ class MessageSuppressionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
 
         # Soft-delete and un-suppress. Reset the bounce counter so a previously-dead address that
         # a user deliberately re-enables starts from a clean slate.
-        updated = MessageSuppression.objects.filter(team_id=self.team_id, identifier=identifier).update(
+        updated = MessageSuppression.objects.for_team(self.team_id).filter(identifier=identifier).update(
             suppressed=False,
             deleted=True,
             transient_bounce_count=0,

@@ -45,9 +45,7 @@ export function SuppressionList(): JSX.Element {
             key: 'reason',
             render: function Render(_, entry: SuppressionEntry): JSX.Element {
                 return (
-                    <span className="text-muted text-xs">
-                        {entry.reason || (entry.last_bounce_diagnostic ?? '—')}
-                    </span>
+                    <span className="text-muted text-xs">{entry.reason || (entry.last_bounce_diagnostic ?? '—')}</span>
                 )
             },
         },

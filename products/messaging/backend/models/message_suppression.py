@@ -1,5 +1,6 @@
 from django.db import models
 
+from posthog.models.scoping.root_mixin import TeamScopedRootMixin
 from posthog.models.utils import UUIDTModel
 
 
@@ -11,7 +12,7 @@ class SuppressionSource(models.TextChoices):
     MANUAL = "MANUAL"
 
 
-class MessageSuppression(UUIDTModel):
+class MessageSuppression(TeamScopedRootMixin, UUIDTModel):
     """
     Per-team list of email addresses we should not send to because they can't (or shouldn't)
     receive mail. Two ways an address lands here:
