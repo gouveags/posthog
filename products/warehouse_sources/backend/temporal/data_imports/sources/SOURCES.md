@@ -258,6 +258,7 @@ the row lists both.
 | linkrunner                | HTTP                        | requests                                                        | ✅                          |
 | linode                    | HTTP                        | requests                                                        | ✅                          |
 | lob                       | HTTP                        | requests                                                        | ✅                          |
+| logz_io                   | HTTP                        | requests                                                        | ✅                          |
 | luma                      | HTTP                        | requests                                                        | ✅                          |
 | mailchimp                 | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | mailerlite                | HTTP                        | requests                                                        | ✅                          |
@@ -708,7 +709,6 @@ doesn't conflict with concurrent PRs.
 - linkedin_pages
 - linnworks
 - llama_cloud
-- logz_io
 - lokalise
 - looker
 - loops
