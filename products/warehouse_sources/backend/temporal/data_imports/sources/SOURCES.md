@@ -242,6 +242,7 @@ the row lists both.
 | katana                    | HTTP                        | requests                                                        | ✅                          |
 | kernel                    | HTTP                        | requests                                                        | ✅                          |
 | klaviyo                   | HTTP                        | requests                                                        | ✅                          |
+| kong_konnect              | HTTP                        | requests                                                        | ✅                          |
 | lago                      | HTTP                        | requests                                                        | ✅                          |
 | langfuse                  | HTTP                        | requests                                                        | ✅                          |
 | launchdarkly              | HTTP                        | requests                                                        | ✅                          |
@@ -691,7 +692,6 @@ doesn't conflict with concurrent PRs.
 - klarna
 - klaus
 - knock
-- kong_konnect
 - koyeb
 - kubecost
 - kyve
