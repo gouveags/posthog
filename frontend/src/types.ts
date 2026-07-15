@@ -5932,7 +5932,6 @@ export enum ActivityScope {
     SURVEY = 'Survey',
     EARLY_ACCESS_FEATURE = 'EarlyAccessFeature',
     COMMENT = 'Comment',
-    SUPPORT_TICKET = 'SupportTicket',
     COHORT = 'Cohort',
     TEAM = 'Team',
     ORGANIZATION = 'Organization',
