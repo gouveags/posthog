@@ -46843,6 +46843,22 @@ export namespace Schemas {
     }
 
     /**
+     * Saved ticket filter criteria. May contain status, priority, channel, sla, assignee, tags, dateFrom, dateTo, and sorting keys.
+     */
+    export type PatchedTicketViewFilters = { [key: string]: unknown };
+
+    export interface PatchedTicketView {
+      readonly id?: string;
+      readonly short_id?: string;
+      /** @maxLength 400 */
+      name?: string;
+      /** Saved ticket filter criteria. May contain status, priority, channel, sla, assignee, tags, dateFrom, dateTo, and sorting keys. */
+      filters?: PatchedTicketViewFilters;
+      readonly created_at?: string;
+      readonly created_by?: UserBasic;
+    }
+
+    /**
      * * `approved` - approved
      * * `needs_approval` - needs_approval
      * * `do_not_use` - do_not_use
@@ -74364,6 +74380,10 @@ export namespace Schemas {
      * Filter reports by whether a shipped implementation pull request exists. 'true' keeps only reports with a PR; 'false' keeps only those without. Pair with limit=1 to count PR reports cheaply.
      */
     has_implementation_pr?: boolean;
+    /**
+     * When true, the list includes reports in every status with no default exclusions applied — currently that adds suppressed (dismissed) reports, which are otherwise hidden. Use it to see the full inbox state (e.g. deduplicating before creating a report) and read each row's status (plus dismissal_reason/dismissal_note on dismissed rows) before acting. Deleted reports are terminal and never returned. Defaults to false, which keeps the existing default exclusions. Ignored when an explicit 'status' filter is set — that filter alone decides which statuses are returned.
+     */
+    include_all_statuses?: boolean;
     /**
      * Number of results to return per page.
      */
