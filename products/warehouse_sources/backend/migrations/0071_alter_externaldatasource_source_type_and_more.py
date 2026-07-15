@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("warehouse_sources", "0068_backfill_direct_query_enabled_false"),
+        ("warehouse_sources", "0070_fix_stripe_incremental_fields"),
     ]
 
     operations = [
