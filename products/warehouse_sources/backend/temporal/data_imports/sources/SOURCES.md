@@ -296,6 +296,7 @@ the row lists both.
 | omnisend                  | HTTP                        | requests                                                        | ✅                          |
 | oncehub                   | HTTP                        | requests                                                        | ✅                          |
 | onepagecrm                | HTTP                        | requests                                                        | ✅                          |
+| onepassword               | HTTP (cursor pagination)    | requests                                                        | ✅                          |
 | onfleet                   | HTTP (cursor pagination)    | requests                                                        | ✅                          |
 | open_exchange_rates       | HTTP                        | requests                                                        | ✅                          |
 | opinion_stage             | HTTP                        | requests                                                        | ✅                          |
@@ -752,7 +753,6 @@ doesn't conflict with concurrent PRs.
 - octopus_deploy
 - onedrive
 - onehundredms
-- onepassword
 - onesignal
 - open_data_dc
 - openai
