@@ -232,6 +232,7 @@ the row lists both.
 | invoiceninja              | HTTP                        | requests                                                        | ✅                          |
 | ip2whois                  | HTTP                        | requests                                                        | ✅                          |
 | iterable                  | HTTP                        | requests                                                        | ✅                          |
+| jamf_pro                  | HTTP                        | requests                                                        | ✅                          |
 | jira                      | HTTP                        | requests                                                        | ✅                          |
 | jobnimbus                 | HTTP                        | requests                                                        | ✅                          |
 | jotform                   | HTTP                        | requests                                                        | ✅                          |
