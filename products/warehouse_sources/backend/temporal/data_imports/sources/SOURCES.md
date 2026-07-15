@@ -60,6 +60,7 @@ the row lists both.
 | apollo                    | HTTP                        | requests                                                        | ✅                          |
 | appfigures                | HTTP                        | requests                                                        | ✅                          |
 | appfollow                 | HTTP                        | requests                                                        | ✅                          |
+| appsignal                 | HTTP (REST + GraphQL)       | requests                                                        | ✅                          |
 | appsflyer                 | HTTP (CSV reports)          | requests                                                        | ✅                          |
 | asana                     | HTTP                        | requests                                                        | ✅                          |
 | ashby                     | HTTP                        | requests                                                        | ✅                          |
@@ -508,7 +509,6 @@ doesn't conflict with concurrent PRs.
 - appcues
 - appdynamics
 - apple_search_ads
-- appsignal
 - appstack
 - apptivo
 - appwrite
