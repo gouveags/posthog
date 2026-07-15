@@ -1944,6 +1944,9 @@ class ExternalDataSourceType(StrEnum):
     KICKSCALE = "Kickscale"
     ZELLIFY = "Zellify"
     RUDDER_STACK = "RudderStack"
+    AUTUMN = "Autumn"
+    GET_STREAM = "GetStream"
+    OCTOLENS = "Octolens"
 
 
 class ExternalQueryErrorCode(StrEnum):

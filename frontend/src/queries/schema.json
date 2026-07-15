@@ -23275,7 +23275,10 @@
                 "GoogleChat",
                 "Kickscale",
                 "Zellify",
-                "RudderStack"
+                "RudderStack",
+                "Autumn",
+                "GetStream",
+                "Octolens"
             ],
             "type": "string"
         },

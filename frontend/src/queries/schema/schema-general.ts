@@ -7589,6 +7589,9 @@ export const externalDataSources = [
     'Kickscale',
     'Zellify',
     'RudderStack',
+    'Autumn',
+    'GetStream',
+    'Octolens',
 ] as const
 
 export type ExternalDataSourceType = (typeof externalDataSources)[number]

@@ -382,6 +382,11 @@ class Auth0SourceConfig(config.Config):
 
 
 @config.config
+class AutumnSourceConfig(config.Config):
+    pass
+
+
+@config.config
 class AviationstackSourceConfig(config.Config):
     access_key: str
 
@@ -1449,6 +1454,11 @@ class GNewsSourceConfig(config.Config):
 class GainsightPxSourceConfig(config.Config):
     api_key: str
     region: Literal["us", "eu", "us2"] = config.value(default="us")
+
+
+@config.config
+class GetStreamSourceConfig(config.Config):
+    pass
 
 
 @config.config
@@ -2535,6 +2545,11 @@ class NylasSourceConfig(config.Config):
 
 @config.config
 class OPUSWatchSourceConfig(config.Config):
+    pass
+
+
+@config.config
+class OctolensSourceConfig(config.Config):
     pass
 
 
@@ -4322,6 +4337,7 @@ def get_config_for_source(source: ExternalDataSourceType):
         ExternalDataSourceType.ATTENTIVE: AttentiveSourceConfig,
         ExternalDataSourceType.ATTIO: AttioSourceConfig,
         ExternalDataSourceType.AUTH0: Auth0SourceConfig,
+        ExternalDataSourceType.AUTUMN: AutumnSourceConfig,
         ExternalDataSourceType.AVIATIONSTACK: AviationstackSourceConfig,
         ExternalDataSourceType.AVIATOR: AviatorSourceConfig,
         ExternalDataSourceType.AWIN: AwinSourceConfig,
@@ -4514,6 +4530,7 @@ def get_config_for_source(source: ExternalDataSourceType):
         ExternalDataSourceType.FULLSTORY: FullStorySourceConfig,
         ExternalDataSourceType.GNEWS: GNewsSourceConfig,
         ExternalDataSourceType.GAINSIGHTPX: GainsightPxSourceConfig,
+        ExternalDataSourceType.GETSTREAM: GetStreamSourceConfig,
         ExternalDataSourceType.GIPHY: GiphySourceConfig,
         ExternalDataSourceType.GITBOOK: GitBookSourceConfig,
         ExternalDataSourceType.GITLAB: GitLabSourceConfig,
@@ -4715,6 +4732,7 @@ def get_config_for_source(source: ExternalDataSourceType):
         ExternalDataSourceType.NUTSHELL: NutshellSourceConfig,
         ExternalDataSourceType.NYLAS: NylasSourceConfig,
         ExternalDataSourceType.OPUSWATCH: OPUSWatchSourceConfig,
+        ExternalDataSourceType.OCTOLENS: OctolensSourceConfig,
         ExternalDataSourceType.OKTA: OktaSourceConfig,
         ExternalDataSourceType.OMNISEND: OmnisendSourceConfig,
         ExternalDataSourceType.ONCEHUB: OncehubSourceConfig,
