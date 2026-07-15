@@ -7,6 +7,7 @@ from typing import Any, cast
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import orjson
 import pyarrow as pa
 import deltalake
 import structlog
@@ -129,6 +130,57 @@ def test_table_from_py_list_inconsistent_types_with_str_and_dict():
             ]
         )
     )
+
+
+# A source may declare a non-string type for a column that arrives as dicts; the serialized
+# column must coerce the schema field to string or from_pydict fails.
+_STRING_DATA_FIELDS: list[pa.Field] = [pa.field("id", pa.int64()), pa.field("data", pa.string())]
+_STRUCT_DATA_FIELDS: list[pa.Field] = [
+    pa.field("id", pa.int64()),
+    pa.field("data", pa.struct([pa.field("a", pa.int64())])),
+]
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        None,
+        pa.schema(_STRING_DATA_FIELDS),
+        pa.schema(_STRUCT_DATA_FIELDS),
+    ],
+)
+def test_table_from_py_list_dict_column_preserves_original_documents(schema):
+    # Heterogeneous nested documents (each row's structure differs, as in a MongoDB collection).
+    # Routing these through a unified pyarrow struct made conversion superlinear in batch size
+    # and injected null-filled union fields from other rows into every serialized document.
+    docs = [
+        {"a": 1, "nested": {"x": [{"k": 1, "verbs": ["led"]}]}},
+        {"b": "two", "nested": {"y": {"deep": True}}, "extra": [1, 2]},
+        None,
+        {"c": [{"only": "here"}]},
+    ]
+    table = table_from_py_list([{"id": i, "data": doc} for i, doc in enumerate(docs)], schema)
+
+    assert table.schema.field("data").type == pa.string()
+    stored = [None if v is None else orjson.loads(v) for v in table.column("data").to_pylist()]
+    assert stored == docs
+
+
+@pytest.mark.parametrize(
+    "rows,expected",
+    [
+        # bool in one row, list in another: wrapping to a list yields [true]/["x"], whose element
+        # types differ, so an intermediate pyarrow list array would raise "tried to convert to boolean".
+        ([{"column": True}, {"column": ["x"]}], ["[true]", '["x"]']),
+        # dict in one row, list in another: would raise "cannot mix struct and non-struct values".
+        ([{"column": {"a": 1}}, {"column": ["x"]}], ['[{"a":1}]', '["x"]']),
+    ],
+)
+def test_table_from_py_list_list_mixed_with_incompatible_element_types(rows, expected):
+    table = table_from_py_list(rows)
+
+    assert table.equals(pa.table({"column": expected}))
+    assert table.schema.equals(pa.schema([("column", pa.string())]))
 
 
 def test_table_from_py_list_with_lists():
@@ -1181,3 +1233,37 @@ def test_merge_observed_columns_unions_and_refreshes():
 )
 def test_source_uses_delta_write_column_selection(source_type, expected):
     assert source_uses_delta_write_column_selection(source_type) is expected
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        # Parseable date strings bucket by their actual date.
+        ("2024-03-15", "2024-03"),
+        ("2024-06-01T12:00:00", "2024-06"),
+        # Non-date-like strings (e.g. a UUIDv7 primary key) must not crash the repartition —
+        # they fall back to the unknown-date sentinel.
+        ("0198d26d-134b-713a-84f7-24d78a416d9c", "1970-01"),
+        ("not a date at all", "1970-01"),
+        # Empty / whitespace-only strings also fall back to the sentinel.
+        ("", "1970-01"),
+        ("   ", "1970-01"),
+    ],
+)
+def test_append_partition_key_datetime_string_column(value, expected):
+    table = pa.table({"id": pa.array([value], type=pa.string())})
+
+    result = append_partition_key_to_table(
+        table=table,
+        partition_count=None,
+        partition_size=None,
+        partition_keys=["id"],
+        partition_mode="datetime",
+        partition_format="month",
+        logger=cast(FilteringBoundLogger, structlog.get_logger()),
+    )
+
+    assert result is not None
+    partitioned_table, mode, _, _ = result
+    assert mode == "datetime"
+    assert partitioned_table.column(PARTITION_KEY).to_pylist() == [expected]

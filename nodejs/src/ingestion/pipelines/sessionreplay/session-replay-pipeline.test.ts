@@ -292,7 +292,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -307,7 +307,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1'), createMessage(0, 2, 'session-2')]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-2'])
             // Highest offset reached on the partition is tracked.
@@ -327,7 +327,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -346,7 +346,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3'),
             ]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-3'])
             // The dropped message (offset 2) is not recorded, but its offset is still accounted for —
@@ -367,7 +367,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -386,7 +386,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3'),
             ]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-2'])
             // The highest offset on the partition belongs to the dropped message; it must still be
@@ -413,7 +413,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -432,7 +432,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3'),
             ]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-2'])
             // The highest offset on the partition belongs to the blocked session; it must still be tracked
@@ -487,7 +487,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -507,7 +507,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(1, 5, 'session-4'), // recorded on partition 1 at a higher offset
             ]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds().sort()).toEqual(['session-1', 'session-2', 'session-4'])
             expect(offsets).toEqual(
@@ -522,7 +522,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -549,7 +549,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1'), invalidMessage, createMessage(0, 3, 'session-3')]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-3'])
             // The unparseable message (offset 2) is DLQ'd, but its offset is still accounted for.
@@ -560,7 +560,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -587,7 +587,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [invalidMessage]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Wait for side effects to complete
             await promiseScheduler.waitForAll()
@@ -614,7 +614,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -633,7 +633,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3'),
             ]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Wait for side effects to complete
             await promiseScheduler.waitForAll()
@@ -650,7 +650,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -663,7 +663,7 @@ describe('session-replay-pipeline', () => {
                 isDebugLoggingEnabled,
             })
 
-            const offsets = await runSessionReplayPipeline(pipeline, [])
+            const offsets = await runSessionReplayPipeline(pipeline, [], promiseScheduler)
 
             expect(offsets.size).toBe(0)
         })
@@ -682,7 +682,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -701,7 +701,7 @@ describe('session-replay-pipeline', () => {
                 messages.push(createMessage(0, i))
             }
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // 100 messages dropped (10, 20, ..., 1000), 900 recorded
             const recorded = recordedSessionIds()
@@ -730,7 +730,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -748,7 +748,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 2, 'session-2', { token: 'team-token-789' }),
             ]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-2'])
             // Verify headers were correctly parsed and passed through
@@ -770,7 +770,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -789,7 +789,7 @@ describe('session-replay-pipeline', () => {
                 messages.push(createMessage(0, i))
             }
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             const recorded = recordedSessionIds()
             expect(recorded).toHaveLength(500)
@@ -813,7 +813,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: teamServiceThatDropsSecond,
                 retentionService,
@@ -832,7 +832,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3', { token: 'valid-token' }),
             ]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1', 'session-3'])
             // The invalid-team message (offset 2) isn't recorded, but its offset is still tracked.
@@ -843,7 +843,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -859,7 +859,7 @@ describe('session-replay-pipeline', () => {
             // Explicitly pass empty headers (no token)
             const messages = [createMessage(0, 1, 'session-1', {})]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Message is dropped by team filter due to missing token — not recorded, offset still tracked.
             expect(recordedSessionIds()).toEqual([])
@@ -870,7 +870,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -885,7 +885,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'test-token', lib_version: '1.74.0' })]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1'])
             expect(outputs.queueMessages).toHaveBeenCalledTimes(1)
@@ -905,6 +905,8 @@ describe('session-replay-pipeline', () => {
             expect(parseJSON(messageValue.details)).toEqual({
                 libVersion: '1.74.0',
                 parsedVersion: { major: 1, minor: 74 },
+                category: 'replay',
+                severity: 'info',
             })
         })
 
@@ -912,7 +914,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -927,7 +929,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'test-token', lib_version: '1.75.0' })]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1'])
             expect(outputs.queueMessages).not.toHaveBeenCalled()
@@ -937,7 +939,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -952,7 +954,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'test-token' })]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(recordedSessionIds()).toEqual(['session-1'])
             expect(outputs.queueMessages).not.toHaveBeenCalled()
@@ -962,7 +964,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -978,7 +980,7 @@ describe('session-replay-pipeline', () => {
             // Create a message with timestamps 10 days old (threshold is 7 days)
             const messages = [createMessageWithOldTimestamps(0, 1, 'session-1', 10, { token: 'test-token' })]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Message is dropped (not recorded) but its offset is tracked and a warning is sent.
             expect(recordedSessionIds()).toEqual([])
@@ -1003,7 +1005,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1018,7 +1020,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1')]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             expect(mockSessionBatchManager.getCurrentBatch).toHaveBeenCalled()
             const mockBatch = mockSessionBatchManager.getCurrentBatch()
@@ -1039,7 +1041,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1058,7 +1060,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3'),
             ]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             const mockBatch = mockSessionBatchManager.getCurrentBatch()
             expect(mockBatch.record).toHaveBeenCalledTimes(3)
@@ -1071,7 +1073,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1086,7 +1088,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1')]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             const mockBatch = mockSessionBatchManager.getCurrentBatch()
             expect(mockBatch.record).not.toHaveBeenCalled()
@@ -1102,7 +1104,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: teamServiceThatReturnsNull,
                 retentionService,
@@ -1117,7 +1119,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'invalid-token' })]
 
-            const offsets = await runSessionReplayPipeline(pipeline, messages)
+            const offsets = await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             const mockBatch = mockSessionBatchManager.getCurrentBatch()
             expect(mockBatch.record).not.toHaveBeenCalled()
@@ -1129,7 +1131,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1144,7 +1146,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'test-token' })]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Verify parse time metric was registered and recorded
             const parseTimeRecorder = topHog.sumRecorders.get('parse_time_ms_by_session_id')
@@ -1160,7 +1162,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1175,7 +1177,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'test-token' })]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Verify message size metric was registered and recorded
             const messageSizeRecorder = topHog.sumRecorders.get('message_size_by_session_id')
@@ -1191,7 +1193,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1206,7 +1208,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1', { token: 'test-token' })]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Verify consume time metric was registered and recorded
             const consumeTimeRecorder = topHog.sumRecorders.get('consume_time_ms_by_session_id')
@@ -1222,7 +1224,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1241,7 +1243,7 @@ describe('session-replay-pipeline', () => {
                 createMessage(0, 3, 'session-3', { token: 'token-1' }),
             ]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Verify all three messages were recorded for each metric
             const parseTimeRecorder = topHog.sumRecorders.get('parse_time_ms_by_session_id')
@@ -1274,7 +1276,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1289,7 +1291,7 @@ describe('session-replay-pipeline', () => {
 
             const messages = [createMessage(0, 1, 'session-1')]
 
-            await runSessionReplayPipeline(pipeline, messages)
+            await runSessionReplayPipeline(pipeline, messages, promiseScheduler)
 
             // Metrics should not be recorded for dropped messages since they never reach the steps
             const parseTimeRecorder = topHog.sumRecorders.get('parse_time_ms_by_session_id')
@@ -1325,7 +1327,7 @@ describe('session-replay-pipeline', () => {
             const pipeline = createSessionReplayPipeline({
                 outputs,
                 eventIngestionRestrictionManager: mockRestrictionManager,
-                overflowEnabled: true,
+                overflowMode: 'redirect',
                 promiseScheduler,
                 teamService: mockTeamService,
                 retentionService,
@@ -1351,7 +1353,7 @@ describe('session-replay-pipeline', () => {
                 size: 100,
             }
 
-            await runSessionReplayPipeline(pipeline, [messageWithoutToken])
+            await runSessionReplayPipeline(pipeline, [messageWithoutToken], promiseScheduler)
 
             // The parsed message should have token from Kafka headers
             const messageSizeRecorder = topHog.sumRecorders.get('message_size_by_session_id')
