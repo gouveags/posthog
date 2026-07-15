@@ -137,6 +137,7 @@ the row lists both.
 | culture_amp               | HTTP                        | requests                                                        | ✅                          |
 | cursor                    | HTTP                        | requests                                                        | ✅                          |
 | customer_io               | HTTP + Webhook              | requests + `WebhookSourceManager`                               | ✅ (App API) / ➖ (webhook) |
+| customerly                | HTTP                        | requests                                                        | ✅                          |
 | datadog                   | HTTP                        | requests                                                        | ✅                          |
 | decagon                   | HTTP                        | requests                                                        | ✅                          |
 | deel                      | HTTP                        | requests                                                        | ✅                          |
@@ -540,7 +541,6 @@ doesn't conflict with concurrent PRs.
 - couchbase
 - criteo
 - curve
-- customerly
 - databricks
 - datascope
 - datorama

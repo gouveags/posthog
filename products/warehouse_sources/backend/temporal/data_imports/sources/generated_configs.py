@@ -980,7 +980,7 @@ class CustomerIOSourceConfig(config.Config):
 
 @config.config
 class CustomerlySourceConfig(config.Config):
-    pass
+    access_token: str
 
 
 @config.config
