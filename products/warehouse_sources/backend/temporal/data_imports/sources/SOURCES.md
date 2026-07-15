@@ -47,6 +47,7 @@ the row lists both.
 | adroll                    | HTTP                        | requests                                                        | ✅                          |
 | agilecrm                  | HTTP                        | requests                                                        | ✅                          |
 | aha                       | HTTP                        | requests                                                        | ✅                          |
+| airbrake                  | HTTP                        | requests                                                        | ✅                          |
 | aircall                   | HTTP                        | requests                                                        | ✅                          |
 | airops                    | HTTP                        | requests                                                        | ✅                          |
 | airtable                  | HTTP                        | requests                                                        | ✅                          |
@@ -492,7 +493,6 @@ doesn't conflict with concurrent PRs.
 - adyen
 - ahrefs
 - aikido_security
-- airbrake
 - airbyte
 - aiven
 - akeneo
