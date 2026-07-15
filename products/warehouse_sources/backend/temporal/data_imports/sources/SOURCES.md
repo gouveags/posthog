@@ -279,6 +279,7 @@ the row lists both.
 | mollie                    | HTTP                        | requests                                                        | ✅                          |
 | monday                    | HTTP (GraphQL)              | requests                                                        | ✅                          |
 | mongodb                   | DB protocol                 | pymongo                                                         | ➖                          |
+| monte_carlo               | HTTP (GraphQL)              | requests                                                        | ✅                          |
 | mssql                     | DB protocol                 | pyodbc / pymssql                                                | ➖                          |
 | mux                       | HTTP                        | requests                                                        | ✅                          |
 | my_hours                  | HTTP                        | requests                                                        | ✅                          |
@@ -734,7 +735,6 @@ doesn't conflict with concurrent PRs.
 - missive
 - mode
 - mono
-- monte_carlo
 - nasa
 - navan
 - neon
