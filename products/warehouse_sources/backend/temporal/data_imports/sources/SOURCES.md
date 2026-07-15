@@ -390,6 +390,7 @@ the row lists both.
 | snapchat_ads              | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | snowflake                 | DB protocol                 | snowflake-connector-python                                      | ➖                          |
 | solarwinds_service_desk   | HTTP                        | requests                                                        | ✅                          |
+| sonar_cloud               | HTTP                        | requests                                                        | ✅                          |
 | sparkpost                 | HTTP                        | requests                                                        | ✅                          |
 | split_io                  | HTTP                        | requests                                                        | ✅                          |
 | square                    | HTTP                        | requests                                                        | ✅                          |
@@ -873,7 +874,6 @@ doesn't conflict with concurrent PRs.
 - snowplow
 - snyk
 - solarwinds_service_desk
-- sonar_cloud
 - sonarqube
 - sonatype_nexus
 - sourcegraph

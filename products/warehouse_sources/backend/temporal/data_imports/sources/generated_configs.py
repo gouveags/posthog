@@ -3877,7 +3877,9 @@ class SolarwindsServiceDeskSourceConfig(config.Config):
 
 @config.config
 class SonarCloudSourceConfig(config.Config):
-    pass
+    token: str
+    organization: str
+    region: Literal["eu", "us"] = config.value(default="eu")
 
 
 @config.config
