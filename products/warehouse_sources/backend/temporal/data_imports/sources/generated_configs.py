@@ -753,7 +753,9 @@ class ChatwootSourceConfig(config.Config):
 
 @config.config
 class CheckmarxSourceConfig(config.Config):
-    pass
+    tenant_name: str
+    api_key: str
+    region: Literal["us", "us2", "eu", "eu2", "deu", "anz", "ind", "sng", "mea"] = config.value(default="us")
 
 
 @config.config
