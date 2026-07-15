@@ -23275,7 +23275,8 @@
                 "GoogleChat",
                 "Kickscale",
                 "Zellify",
-                "RudderStack"
+                "RudderStack",
+                "Campfire"
             ],
             "type": "string"
         },

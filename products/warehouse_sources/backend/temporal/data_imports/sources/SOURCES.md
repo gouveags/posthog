@@ -509,6 +509,7 @@ doesn't conflict with concurrent PRs.
 - browser_use
 - cal_com
 - campaign_manager_360
+- campfire
 - captain_data
 - cart_com
 - castor_edc
