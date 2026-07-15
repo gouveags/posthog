@@ -3352,7 +3352,8 @@ class RampSourceConfig(config.Config):
 
 @config.config
 class Rapid7InsightvmSourceConfig(config.Config):
-    pass
+    api_key: str
+    region: Literal["us", "eu", "ca", "au", "ap", "jp"] = config.value(default="us")
 
 
 @config.config
