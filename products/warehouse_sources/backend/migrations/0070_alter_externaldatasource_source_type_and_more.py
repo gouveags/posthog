@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("warehouse_sources", "0069_alter_externaldatasource_created_via"),
     ]
