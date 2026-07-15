@@ -419,7 +419,9 @@ class AzureTableStorageSourceConfig(config.Config):
 
 @config.config
 class BabelforceSourceConfig(config.Config):
-    pass
+    environment: str
+    access_id: str
+    access_token: str
 
 
 @config.config

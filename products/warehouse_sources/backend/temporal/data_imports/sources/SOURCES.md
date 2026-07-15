@@ -70,6 +70,7 @@ the row lists both.
 | aviator                   | HTTP                        | requests                                                        | ✅                          |
 | awin                      | HTTP                        | requests                                                        | ✅                          |
 | azure_devops              | HTTP                        | requests                                                        | ✅                          |
+| babelforce                | HTTP                        | requests                                                        | ✅                          |
 | bamboohr                  | HTTP                        | requests                                                        | ✅                          |
 | baseten                   | HTTP                        | requests                                                        | ✅                          |
 | beamer                    | HTTP                        | requests                                                        | ✅                          |
@@ -507,7 +508,6 @@ doesn't conflict with concurrent PRs.
 - aws_cloudtrail
 - azure_blob
 - azure_table_storage
-- babelforce
 - backblaze
 - basecamp
 - bigcommerce
