@@ -225,6 +225,7 @@ the row lists both.
 | incident_io               | HTTP                        | requests                                                        | ✅                          |
 | inflowinventory           | HTTP                        | requests                                                        | ✅                          |
 | insightly                 | HTTP                        | requests                                                        | ✅                          |
+| instana                   | HTTP                        | requests                                                        | ✅                          |
 | instatus                  | HTTP                        | requests                                                        | ✅                          |
 | intercom                  | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
 | intruder                  | HTTP                        | requests                                                        | ✅                          |
@@ -670,7 +671,6 @@ doesn't conflict with concurrent PRs.
 - inngest
 - insightful
 - instagram
-- instana
 - instantly
 - interzoid
 - jamf_pro
