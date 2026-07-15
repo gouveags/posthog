@@ -2050,7 +2050,9 @@ class LangSmithSourceConfig(config.Config):
 
 @config.config
 class LangfuseSourceConfig(config.Config):
-    pass
+    public_key: str
+    secret_key: str
+    host: str | None = None
 
 
 @config.config
@@ -3951,7 +3953,7 @@ class VantageSourceConfig(config.Config):
 
 @config.config
 class VapiSourceConfig(config.Config):
-    pass
+    api_key: str
 
 
 @config.config

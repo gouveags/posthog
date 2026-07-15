@@ -241,6 +241,7 @@ the row lists both.
 | kernel                    | HTTP                        | requests                                                        | ✅                          |
 | klaviyo                   | HTTP                        | requests                                                        | ✅                          |
 | lago                      | HTTP                        | requests                                                        | ✅                          |
+| langfuse                  | HTTP                        | requests                                                        | ✅                          |
 | launchdarkly              | HTTP                        | requests                                                        | ✅                          |
 | kustomer                  | HTTP                        | requests                                                        | ✅                          |
 | lattice                   | HTTP                        | requests                                                        | ✅                          |
@@ -421,6 +422,7 @@ the row lists both.
 | unleash                   | HTTP                        | requests                                                        | ✅                          |
 | upstash                   | HTTP                        | requests                                                        | ✅                          |
 | vantage                   | HTTP                        | requests                                                        | ✅                          |
+| vapi                      | HTTP                        | requests                                                        | ✅                          |
 | vellum                    | HTTP                        | requests                                                        | ✅                          |
 | vercel                    | HTTP                        | requests                                                        | ✅                          |
 | vitally                   | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
@@ -640,7 +642,6 @@ doesn't conflict with concurrent PRs.
 - koyeb
 - kyve
 - lambda_labs
-- langfuse
 - langsmith
 - leexi
 - lemon_squeezy
@@ -839,7 +840,6 @@ doesn't conflict with concurrent PRs.
 - uptick
 - us_census
 - uservoice
-- vapi
 - veeqo
 - vespa
 - visma_economic
