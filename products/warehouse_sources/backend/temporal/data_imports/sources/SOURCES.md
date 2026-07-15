@@ -108,6 +108,7 @@ the row lists both.
 | churnkey                  | HTTP                        | requests                                                        | ✅                          |
 | coassemble                | HTTP                        | requests                                                        | ✅                          |
 | coda                      | HTTP                        | requests                                                        | ✅                          |
+| codacy                    | HTTP                        | requests                                                        | ✅                          |
 | codefresh                 | HTTP                        | requests                                                        | ✅                          |
 | cohere                    | HTTP                        | requests                                                        | ✅                          |
 | coin_api                  | HTTP                        | requests                                                        | ✅                          |
@@ -553,7 +554,6 @@ doesn't conflict with concurrent PRs.
 - cloudbeds
 - coassemble
 - cockroachdb
-- codacy
 - codecov
 - cody
 - confluent_cloud
