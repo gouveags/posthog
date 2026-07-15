@@ -322,11 +322,14 @@ class OrganizationFeatureFlagView(
                 {"error": "target_project_ids must be a list of integers"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        target_project_ids = [safe_int(project_id) for project_id in raw_target_project_ids]
-        if any(project_id is None for project_id in target_project_ids):
+        maybe_target_project_ids = [safe_int(project_id) for project_id in raw_target_project_ids]
+        if any(project_id is None for project_id in maybe_target_project_ids):
             return Response(
                 {"error": "target_project_ids must be a list of integers"}, status=status.HTTP_400_BAD_REQUEST
             )
+        target_project_ids: list[int] = [
+            project_id for project_id in maybe_target_project_ids if project_id is not None
+        ]
 
         if len(target_project_ids) > MAX_COPY_FLAGS_TARGET_PROJECTS:
             return Response(
