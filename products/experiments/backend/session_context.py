@@ -31,6 +31,7 @@ from posthog.hogql.parser import parse_select
 from posthog.hogql.query import execute_hogql_query
 
 from posthog.models.team.team import Team
+from posthog.models.user import User
 from posthog.session_recordings.queries.session_replay_events import SessionReplayEvents
 
 from products.experiments.backend.hogql_queries.exposure_query_logic import (
@@ -76,12 +77,15 @@ class ExperimentSessionContextItem:
 
 
 def get_session_experiment_context(
-    team: Team, session_id: str, experiments: QuerySet[Experiment]
+    team: Team, session_id: str, experiments: QuerySet[Experiment], user: User
 ) -> Optional[list[ExperimentSessionContextItem]]:
     """Returns the experiments the session saw, or None when the recording doesn't exist for this team.
 
     `experiments` is the caller's base queryset — the view passes it through object-level
     access control so private experiments never surface in another user's session context.
+    `user` is the viewer: exposure criteria can filter on arbitrary event/person properties,
+    and the queries must enforce that user's property-level access control (as the experiment
+    query runners do) — userless execution would apply only the default property rules.
     """
     metadata = SessionReplayEvents().get_metadata(session_id, team)
     if metadata is None:
@@ -144,7 +148,9 @@ def get_session_experiment_context(
 
     default_flag_keys = {flag_key for _, flag_key in default_experiments}
     exposures_by_flag_key = (
-        _query_default_exposure_events(team, session_id, window_start, window_end, default_flag_keys, default_variants)
+        _query_default_exposure_events(
+            team, user, session_id, window_start, window_end, default_flag_keys, default_variants
+        )
         if default_flag_keys
         else {}
     )
@@ -158,7 +164,7 @@ def get_session_experiment_context(
     # deliberately not queried and forgo the rescue below.
     exposures.update(
         _query_exposure_event_branches(
-            team, session_id, window_start, window_end, branch_meta[:MAX_CANDIDATE_EXPERIMENTS]
+            team, user, session_id, window_start, window_end, branch_meta[:MAX_CANDIDATE_EXPERIMENTS]
         )
     )
 
@@ -174,7 +180,7 @@ def get_session_experiment_context(
         candidates += list(overlapping.filter(feature_flag__key__in=sorted(rescued_keys)))
         candidate_keys = {experiment.feature_flag.key for experiment in candidates}
 
-    stamped = _query_stamped_flag_properties(team, session_id, candidate_keys, window_start, window_end)
+    stamped = _query_stamped_flag_properties(team, user, session_id, candidate_keys, window_start, window_end)
 
     items: list[ExperimentSessionContextItem] = []
     for experiment in candidates:
@@ -249,6 +255,7 @@ def _defined_variant_keys(experiment: Experiment) -> set[str]:
 
 def _query_default_exposure_events(
     team: Team,
+    user: User,
     session_id: str,
     window_start: datetime,
     window_end: datetime,
@@ -283,7 +290,7 @@ def _query_default_exposure_events(
             "max_rows": ast.Constant(value=MAX_EXPOSURE_ROWS),
         },
     )
-    response = execute_hogql_query(query, team=team)
+    response = execute_hogql_query(query, team=team, user=user)
 
     exposures: dict[str, list[tuple[str, datetime]]] = {}
     for flag_key, variant, first_seen in response.results or []:
@@ -295,6 +302,7 @@ def _query_default_exposure_events(
 
 def _query_exposure_event_branches(
     team: Team,
+    user: User,
     session_id: str,
     window_start: datetime,
     window_end: datetime,
@@ -347,7 +355,7 @@ def _query_exposure_event_branches(
     # Backstop against HogQL's implicit LIMIT 100 truncating legitimate rows; the branches are
     # already bounded by each flag's defined variants.
     query.limit = ast.Constant(value=MAX_EXPOSURE_ROWS)
-    response = execute_hogql_query(query, team=team)
+    response = execute_hogql_query(query, team=team, user=user)
 
     exposures: dict[int, list[tuple[str, datetime]]] = {}
     for experiment_id, variant, first_seen in response.results or []:
@@ -359,6 +367,7 @@ def _query_exposure_event_branches(
 
 def _query_stamped_flag_properties(
     team: Team,
+    user: User,
     session_id: str,
     flag_keys: set[str],
     window_start: datetime,
@@ -400,7 +409,7 @@ def _query_stamped_flag_properties(
             ]
         ),
     )
-    response = execute_hogql_query(query, team=team)
+    response = execute_hogql_query(query, team=team, user=user)
 
     row = response.results[0] if response.results else [[] for _ in sorted_keys]
     return {key: [value for value in row[index] if value] for index, key in enumerate(sorted_keys)}

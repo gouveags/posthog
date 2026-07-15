@@ -8,11 +8,13 @@ from unittest.mock import patch
 from rest_framework import status
 
 from posthog.constants import AvailableFeature
-from posthog.models import Team, User
+from posthog.models import PropertyDefinition, Team, User
 from posthog.models.personal_api_key import PersonalAPIKey
 from posthog.models.utils import generate_random_token_personal, hash_key_value, uuid7
 from posthog.session_recordings.queries.test.session_replay_sql import produce_replay_summary
 
+from products.access_control.backend.models.property_access_control import PropertyAccessControl
+from products.access_control.backend.property_access_control import PropertyAccessLevel
 from products.actions.backend.models.action import Action
 from products.experiments.backend.models.experiment import Experiment
 from products.feature_flags.backend.models.feature_flag import FeatureFlag
@@ -71,10 +73,10 @@ class TestSessionExperimentContext(ClickhouseTestMixin, APILicensedTest):
             exposure_criteria=exposure_criteria or {},
         )
 
-    def _enable_access_controls(self) -> None:
+    def _enable_access_controls(self, feature: str = AvailableFeature.ACCESS_CONTROL) -> None:
         features = self.organization.available_product_features or []
-        if not any(feature["key"] == AvailableFeature.ACCESS_CONTROL for feature in features):
-            features.append({"key": AvailableFeature.ACCESS_CONTROL, "name": AvailableFeature.ACCESS_CONTROL})
+        if not any(existing["key"] == feature for existing in features):
+            features.append({"key": feature, "name": feature})
             self.organization.available_product_features = features
             self.organization.save()
 
@@ -269,6 +271,44 @@ class TestSessionExperimentContext(ClickhouseTestMixin, APILicensedTest):
         assert len(results) == 1
         assert results[0]["variant"] == "test"
         assert results[0]["first_exposure_timestamp"] == "2026-01-01T10:06:00Z"
+
+    def test_property_filters_respect_viewer_property_access_control(self) -> None:
+        self._enable_access_controls(AvailableFeature.PROPERTY_ACCESS_CONTROL)
+        self._create_recording()
+        self._create_experiment(
+            exposure_criteria={
+                "exposure_config": {
+                    "kind": "ExperimentEventExposureConfig",
+                    "event": "$feature_flag_called",
+                    "properties": [{"key": "plan", "value": ["premium"], "operator": "exact", "type": "event"}],
+                }
+            }
+        )
+        # A user-specific denial leaves the default rules permissive, so it is only enforced
+        # when the viewer threads through to the exposure queries — userless execution would
+        # let the denied property's filter match and leak an exposure signal.
+        plan_prop = PropertyDefinition.objects.create(
+            team=self.team, name="plan", property_type="String", type=PropertyDefinition.Type.EVENT
+        )
+        PropertyAccessControl.objects.create(
+            team=self.team,
+            property_definition=plan_prop,
+            access_level=PropertyAccessLevel.NONE.value,
+            organization_member=self.organization_membership,
+        )
+        self._create_session_event(
+            timestamp="2026-01-01T10:06:00Z",
+            properties={"$feature_flag": "checkout-cta", "$feature_flag_response": "test", "plan": "premium"},
+        )
+        self._create_session_event(event="$pageview", properties={"$feature/checkout-cta": "test"})
+        flush_persons_and_events()
+
+        response = self._get_session_context()
+        assert response.status_code == status.HTTP_200_OK
+        results = response.json()["results"]
+        assert len(results) == 1
+        assert results[0]["variant"] == "test"
+        assert results[0]["first_exposure_timestamp"] is None
 
     def test_action_exposure_criteria_defines_exposure_timestamp(self) -> None:
         self._create_recording()
