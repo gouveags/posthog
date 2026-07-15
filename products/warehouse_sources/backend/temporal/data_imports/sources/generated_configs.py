@@ -4154,7 +4154,8 @@ class TerraApiSourceConfig(config.Config):
 
 @config.config
 class TerraformCloudSourceConfig(config.Config):
-    pass
+    api_token: str
+    organization: str
 
 
 @config.config
