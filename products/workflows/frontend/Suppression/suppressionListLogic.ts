@@ -22,7 +22,6 @@ export const suppressionListLogic = kea<suppressionListLogicType>([
         loadPreviousPage: true,
         setShowAddModal: (show: boolean) => ({ show }),
         setNewIdentifier: (identifier: string) => ({ identifier }),
-        removeSuppression: (identifier: string) => ({ identifier }),
     }),
     reducers({
         currentPage: [
@@ -94,7 +93,7 @@ export const suppressionListLogic = kea<suppressionListLogicType>([
         },
         removeSuppression: {
             __default: null as string | null,
-            removeSuppression: async ({ identifier }: { identifier: string }): Promise<string> => {
+            removeSuppression: async (identifier: string): Promise<string> => {
                 try {
                     await api.messaging.removeSuppression(identifier)
                     lemonToast.success(`${identifier} removed from suppression list`)
