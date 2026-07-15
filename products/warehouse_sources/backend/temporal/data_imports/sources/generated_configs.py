@@ -1279,7 +1279,8 @@ class DynamoDBSourceConfig(config.Config):
 
 @config.config
 class DynatraceSourceConfig(config.Config):
-    pass
+    environment_url: str
+    api_token: str
 
 
 @config.config
