@@ -392,6 +392,7 @@ the row lists both.
 | solarwinds_service_desk   | HTTP                        | requests                                                        | ✅                          |
 | sparkpost                 | HTTP                        | requests                                                        | ✅                          |
 | split_io                  | HTTP                        | requests                                                        | ✅                          |
+| squadcast                 | HTTP                        | requests                                                        | ✅                          |
 | square                    | HTTP                        | requests                                                        | ✅                          |
 | squarespace               | HTTP                        | requests                                                        | ✅                          |
 | statuspage                | HTTP                        | requests                                                        | ✅                          |
@@ -881,7 +882,6 @@ doesn't conflict with concurrent PRs.
 - splunk_observability_cloud
 - spotify_ads
 - spotlercrm
-- squadcast
 - statsig
 - statuscake
 - stockdata
