@@ -7984,6 +7984,14 @@ export namespace Schemas {
       uploads: UploadTarget[];
     }
 
+    export interface AddSuppressionRequest {
+      /**
+         * The email address to suppress. Will not receive any messages until removed.
+         * @maxLength 512
+         */
+      identifier: string;
+    }
+
     export interface AgentAggregateStats {
       /** Sessions currently in a live state (queued / running). */
       liveCount: number;
@@ -33871,6 +33879,36 @@ export namespace Schemas {
       updated_at: string;
       /** Map of category ID to preference status. */
       preferences: unknown;
+    }
+
+    /**
+     * * `BOUNCE` - Bounce
+     * * `MANUAL` - Manual
+     */
+    export type MessageSuppressionSourceEnum = typeof MessageSuppressionSourceEnum[keyof typeof MessageSuppressionSourceEnum];
+
+
+    export const MessageSuppressionSourceEnum = {
+      Bounce: 'BOUNCE',
+      Manual: 'MANUAL',
+    } as const;
+
+    export interface MessageSuppression {
+      readonly id: string;
+      readonly identifier: string;
+      readonly source: MessageSuppressionSourceEnum;
+      /** @nullable */
+      readonly reason: string | null;
+      readonly transient_bounce_count: number;
+      /** @nullable */
+      readonly last_bounce_at: string | null;
+      /** @nullable */
+      readonly last_bounce_diagnostic: string | null;
+      readonly suppressed: boolean;
+      /** @nullable */
+      readonly suppressed_at: string | null;
+      readonly created_at: string;
+      readonly updated_at: string;
     }
 
     /**
