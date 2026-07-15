@@ -108,6 +108,7 @@ pub async fn send_issue_spiking_internal_event<I: NotificationIssue>(
     internal_events_topic: &str,
     notification_id: Uuid,
     issue: &I,
+    fingerprint: &str,
     computed_baseline: f64,
     current_bucket_value: f64,
 ) -> Result<(), UnhandledError> {
@@ -130,6 +131,15 @@ pub async fn send_issue_spiking_internal_event<I: NotificationIssue>(
     event
         .insert_prop("current_bucket_value", current_bucket_value)
         .expect("insert_prop for current_bucket_value should never fail");
+    if !fingerprint.is_empty() {
+        event
+            .insert_prop("fingerprint", fingerprint)
+            .expect("insert_prop for fingerprint should never fail");
+        // Spikes are detected on live traffic, so "now" is a good anchor for finding example events.
+        event
+            .insert_prop("exception_timestamp", Utc::now())
+            .expect("insert_prop for exception_timestamp should never fail");
+    }
 
     let iter = [InternalEvent {
         team_id: issue.team_id(),
