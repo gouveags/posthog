@@ -27,13 +27,14 @@ import { AccessControlLevel, AccessControlResourceType, Breadcrumb } from '~/typ
 import { MessageChannels } from './Channels/MessageChannels'
 import { optOutCategoriesLogic } from './OptOuts/optOutCategoriesLogic'
 import { OptOutScene } from './OptOuts/OptOutScene'
+import { SuppressionScene } from './Suppression/SuppressionScene'
 import { MessageTemplatesTable } from './TemplateLibrary/MessageTemplatesTable'
 import { newWorkflowLogic } from './Workflows/newWorkflowLogic'
 import { NewWorkflowModal } from './Workflows/NewWorkflowModal'
 import { WorkflowsTable } from './Workflows/WorkflowsTable'
 import type { workflowsSceneLogicType } from './WorkflowsSceneType'
 
-const WORKFLOW_SCENE_TABS = ['workflows', 'library', 'channels', 'opt-outs'] as const
+const WORKFLOW_SCENE_TABS = ['workflows', 'library', 'channels', 'opt-outs', 'suppression'] as const
 export type WorkflowsSceneTab = (typeof WORKFLOW_SCENE_TABS)[number]
 
 export type WorkflowsSceneProps = {
@@ -189,6 +190,12 @@ export function WorkflowsScene(props: WorkflowsSceneProps = {}): JSX.Element {
             key: 'opt-outs',
             content: <OptOutScene />,
             link: urls.workflows('opt-outs'),
+        },
+        {
+            label: 'Suppression list',
+            key: 'suppression',
+            content: <SuppressionScene />,
+            link: urls.workflows('suppression'),
         },
     ]
 

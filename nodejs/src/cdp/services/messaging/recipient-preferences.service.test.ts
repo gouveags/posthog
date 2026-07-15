@@ -9,6 +9,7 @@ import { getFirstTeam, resetTestDatabase } from '~/tests/helpers/sql'
 import { Hub, Team } from '~/types'
 
 import { RecipientsManagerService } from '../managers/recipients-manager.service'
+import { EmailSuppressionService } from './email-suppression.service'
 import { RecipientPreferencesService } from './recipient-preferences.service'
 import { RecipientTokensService } from './recipient-tokens.service'
 
@@ -19,6 +20,7 @@ describe('RecipientPreferencesService', () => {
     let team: Team
     let service: RecipientPreferencesService
     let mockRecipientsManager: RecipientsManagerService
+    let mockEmailSuppressionService: EmailSuppressionService
     let mockRecipientsManagerGet: jest.SpyInstance
     let mockRecipientsManagerGetPreference: jest.SpyInstance
     let mockRecipientsManagerGetAllMarketingMessagingPreference: jest.SpyInstance
@@ -35,7 +37,8 @@ describe('RecipientPreferencesService', () => {
             'getAllMarketingMessagingPreference'
         )
 
-        service = new RecipientPreferencesService(mockRecipientsManager)
+        mockEmailSuppressionService = new EmailSuppressionService(hub.postgres)
+        service = new RecipientPreferencesService(mockRecipientsManager, mockEmailSuppressionService)
     })
 
     afterEach(async () => {
