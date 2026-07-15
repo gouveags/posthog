@@ -4448,7 +4448,9 @@ class WebflowSourceConfig(config.Config):
 
 @config.config
 class WeightsAndBiasesSourceConfig(config.Config):
-    pass
+    api_key: str
+    entity: str
+    host: str | None = None
 
 
 @config.config
