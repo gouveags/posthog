@@ -3656,7 +3656,7 @@ class SemaphoreSourceConfig(config.Config):
 
 @config.config
 class SemgrepSourceConfig(config.Config):
-    pass
+    api_token: str
 
 
 @config.config
