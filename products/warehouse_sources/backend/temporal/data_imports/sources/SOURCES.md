@@ -63,6 +63,7 @@ the row lists both.
 | appsflyer                 | HTTP (CSV reports)          | requests                                                        | ✅                          |
 | asana                     | HTTP                        | requests                                                        | ✅                          |
 | ashby                     | HTTP                        | requests                                                        | ✅                          |
+| asknicely                 | HTTP                        | requests                                                        | ✅                          |
 | assemblyai                | HTTP                        | requests                                                        | ✅                          |
 | attentive                 | HTTP (webhook-first)        | requests (webhook management)                                   | ✅                          |
 | attio                     | HTTP                        | requests + `rest_source.RESTClient`                             | ✅                          |
@@ -513,7 +514,6 @@ doesn't conflict with concurrent PRs.
 - apptivo
 - appwrite
 - argocd
-- asknicely
 - auth0
 - automox
 - aws_cloudtrail
