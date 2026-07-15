@@ -153,7 +153,9 @@ def get_session_experiment_context(
         for experiment_id, flag_key in default_experiments
         if flag_key in exposures_by_flag_key
     }
-    # Same width backstop as the candidate cap — each branch experiment adds a union branch.
+    # Same width backstop as the candidate cap — each branch experiment adds a union branch, so
+    # (unlike the constant-width default query) non-batchable experiments beyond the cap are
+    # deliberately not queried and forgo the rescue below.
     exposures.update(
         _query_exposure_event_branches(
             team, session_id, window_start, window_end, branch_meta[:MAX_CANDIDATE_EXPERIMENTS]
