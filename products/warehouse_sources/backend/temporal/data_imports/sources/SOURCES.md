@@ -73,6 +73,7 @@ the row lists both.
 | bamboohr                  | HTTP                        | requests                                                        | ✅                          |
 | baseten                   | HTTP                        | requests                                                        | ✅                          |
 | beamer                    | HTTP                        | requests                                                        | ✅                          |
+| better_stack              | HTTP                        | requests                                                        | ✅                          |
 | bigmailer                 | HTTP                        | requests                                                        | ✅                          |
 | bigquery                  | HTTP + gRPC                 | google-cloud-bigquery + bigquery-storage                        | ✅ (HTTP + gRPC)            |
 | bing_ads                  | HTTP (vendor SDK, SOAP)     | bingads SDK                                                     | ⚠️                          |
@@ -522,7 +523,6 @@ doesn't conflict with concurrent PRs.
 - babelforce
 - backblaze
 - basecamp
-- better_stack
 - bettermode
 - bigcommerce
 - bitbucket
