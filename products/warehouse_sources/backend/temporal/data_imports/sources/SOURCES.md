@@ -368,6 +368,7 @@ the row lists both.
 | scale_ai                  | HTTP                        | requests                                                        | ✅                          |
 | scaleway                  | HTTP                        | requests                                                        | ✅                          |
 | secoda                    | HTTP                        | requests                                                        | ✅                          |
+| secureframe               | HTTP                        | requests                                                        | ✅                          |
 | segment                   | HTTP                        | requests                                                        | ✅                          |
 | sendgrid                  | HTTP                        | requests                                                        | ✅                          |
 | sendowl                   | HTTP                        | requests                                                        | ✅                          |
@@ -842,7 +843,6 @@ doesn't conflict with concurrent PRs.
 - scale_ai
 - scaleway
 - search_ads_360
-- secureframe
 - semaphore
 - semgrep
 - sendpulse
