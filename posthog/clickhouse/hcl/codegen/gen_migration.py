@@ -86,7 +86,7 @@ def write_dump(env: str, roles: list[str], ref: str, dump_dir: str) -> None:
     """Build plan's -dump for one env from the committed goldens, tagged by role."""
     os.makedirs(dump_dir)
     for role in roles:
-        golden = run(["git", "show", f"{ref}:{HCL_REL}/golden/{env}-{role}.hcl"])
+        golden = run(["git", "show", f"{ref}:{HCL_REL}/golden/{env}/{role}.hcl"])
         with open(os.path.join(dump_dir, f"{role}.hcl"), "w") as f:
             f.write(f'node "{role}" {{\n  macros = {{ hostClusterRole = "{role}" }}\n}}\n')
             f.write(golden)

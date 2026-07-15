@@ -36,6 +36,13 @@ for env in $envs; do
     set --
   fi
 
+  # hclexp writes <env>-<role>.hcl flat into -out; reshape into per-env dirs
+  # golden/<env>/<role>.hcl. The container writes flat (proven-writable mount),
+  # the host moves — sidesteps the container-uid write perms on a fresh subdir.
   "$HCLEXP" load -manifest "$MANIFEST" -env "$env" -layer-root "$HCL" "$@" -out "$GOLDEN" >/dev/null
-  for role in $roles; do echo "wrote $GOLDEN/$env-$role.hcl"; done
+  mkdir -p "$GOLDEN/$env"
+  for role in $roles; do
+    mv "$GOLDEN/$env-$role.hcl" "$GOLDEN/$env/$role.hcl"
+    echo "wrote $GOLDEN/$env/$role.hcl"
+  done
 done
