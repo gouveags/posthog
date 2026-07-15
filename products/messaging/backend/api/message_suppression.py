@@ -55,6 +55,10 @@ class MessageSuppressionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
     scope_object = "INTERNAL"
     serializer_class = _FallbackSerializer
 
+    @extend_schema(
+        responses={200: MessageSuppressionSerializer(many=True)},
+        summary="List suppressed email addresses for the team",
+    )
     @action(detail=False, methods=["get"])
     def suppressions(self, request, **kwargs):
         """List suppressed recipients for the team, most recently updated first."""
@@ -126,11 +130,15 @@ class MessageSuppressionViewSet(TeamAndOrgViewSetMixin, viewsets.ViewSet):
 
         # Soft-delete and un-suppress. Reset the bounce counter so a previously-dead address that
         # a user deliberately re-enables starts from a clean slate.
-        updated = MessageSuppression.objects.for_team(self.team_id).filter(identifier=identifier).update(
-            suppressed=False,
-            deleted=True,
-            transient_bounce_count=0,
-            updated_at=timezone.now(),
+        updated = (
+            MessageSuppression.objects.for_team(self.team_id)
+            .filter(identifier=identifier)
+            .update(
+                suppressed=False,
+                deleted=True,
+                transient_bounce_count=0,
+                updated_at=timezone.now(),
+            )
         )
 
         if not updated:
