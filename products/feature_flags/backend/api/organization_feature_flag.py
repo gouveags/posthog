@@ -3,6 +3,7 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import Case, IntegerField, Q, QuerySet, Value, When
+from django.http import QueryDict
 
 import structlog
 from drf_spectacular.types import OpenApiTypes
@@ -304,12 +305,28 @@ class OrganizationFeatureFlagView(
         body = request.data
         feature_flag_key = body.get("feature_flag_key")
         from_project = body.get("from_project")
-        target_project_ids = body.get("target_project_ids")
+        # For form/multipart bodies, `body` is a QueryDict, where `.get()` returns only the last
+        # raw string value for a repeated key instead of the full list; `.getlist()` handles both
+        # that and plain JSON bodies (where `target_project_ids` is already a list).
+        raw_target_project_ids = (
+            body.getlist("target_project_ids") if isinstance(body, QueryDict) else body.get("target_project_ids")
+        )
         copy_schedule = body.get("copy_schedule", False)  # Optional parameter to copy schedules
         disable_copied_flag = body.get("disable_copied_flag", False)
 
-        if not feature_flag_key or not from_project or not target_project_ids:
+        if not feature_flag_key or not from_project or not raw_target_project_ids:
             return Response({"error": "Missing required fields"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not isinstance(raw_target_project_ids, list):
+            return Response(
+                {"error": "target_project_ids must be a list of integers"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_project_ids = [safe_int(project_id) for project_id in raw_target_project_ids]
+        if any(project_id is None for project_id in target_project_ids):
+            return Response(
+                {"error": "target_project_ids must be a list of integers"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if len(target_project_ids) > MAX_COPY_FLAGS_TARGET_PROJECTS:
             return Response(
