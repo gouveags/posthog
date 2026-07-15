@@ -101,7 +101,6 @@ import {
     InsightColor,
     InsightModel,
     InsightShortId,
-    IntervalType,
     ProjectTreeRef,
     QueryBasedInsightModel,
     TextModel,
@@ -347,7 +346,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
         }),
         setProperties: (properties: AnyPropertyFilter[] | null) => ({ properties }),
         setBreakdownFilter: (breakdown_filter: BreakdownFilter | null) => ({ breakdown_filter }),
-        setInterval: (interval: IntervalType | null) => ({ interval }),
         setFilterTestAccounts: (filterTestAccounts: boolean | null) => ({ filterTestAccounts }),
         setExternalFilters: (filters: DashboardFilter) => ({ filters }),
         saveEditModeChanges: () => true,
@@ -816,7 +814,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
                 setDates: () => false,
                 setProperties: () => false,
                 setBreakdownFilter: () => false,
-                setInterval: () => false,
                 setFilterTestAccounts: () => false,
                 loadDashboardSuccess: () => false,
                 loadDashboardFailure: () => false,
@@ -1296,7 +1293,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
                 properties: undefined,
                 breakdown_filter: undefined,
                 explicitDate: undefined,
-                interval: undefined,
                 filterTestAccounts: undefined,
             } as DashboardFilter,
             {
@@ -1314,10 +1310,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
                     ...state,
                     breakdown_filter,
                 }),
-                setInterval: (state, { interval }) => ({
-                    ...state,
-                    interval,
-                }),
                 setFilterTestAccounts: (state, { filterTestAccounts }) => ({
                     ...state,
                     filterTestAccounts,
@@ -1328,7 +1320,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
                     properties: undefined,
                     breakdown_filter: undefined,
                     explicitDate: undefined,
-                    interval: undefined,
                     filterTestAccounts: undefined,
                 }),
             },
@@ -3140,18 +3131,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
                 })
             }
         },
-        setInterval: ({ interval }) => {
-            eventUsageLogic.actions.reportDashboardFiltersChanged(values.dashboard, 'interval', {
-                interval,
-            })
-
-            if (values.canAutoPreview) {
-                actions.refreshDashboardItems({
-                    action: RefreshDashboardItemsAction.Preview,
-                    forceRefresh: false,
-                })
-            }
-        },
         setFilterTestAccounts: ({ filterTestAccounts }) => {
             eventUsageLogic.actions.reportDashboardFiltersChanged(values.dashboard, 'test_accounts', {
                 filter_test_accounts: filterTestAccounts,
@@ -3409,25 +3388,6 @@ export const dashboardLogic = kea<dashboardLogicType>([
             return [
                 currentLocation.pathname,
                 { ...newSearchParams, ...encodeURLFilters(newUrlFilters) },
-                currentLocation.hashParams,
-            ]
-        },
-        setInterval: ({ interval }) => {
-            if (!values.canAutoPreview) {
-                return
-            }
-
-            const { currentLocation } = router.values
-
-            const urlFilters = parseURLFilters(currentLocation.searchParams)
-            const newUrlFilters: DashboardFilter = {
-                ...urlFilters,
-                interval,
-            }
-
-            return [
-                currentLocation.pathname,
-                { ...currentLocation.searchParams, ...encodeURLFilters(newUrlFilters) },
                 currentLocation.hashParams,
             ]
         },

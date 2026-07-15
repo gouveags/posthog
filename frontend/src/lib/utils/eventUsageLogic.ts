@@ -104,7 +104,6 @@ export type DashboardFilterChangeType =
     | 'breakdown'
     | 'variable'
     | 'quick_filters'
-    | 'interval'
     | 'test_accounts'
 
 export enum InsightEventSource {
