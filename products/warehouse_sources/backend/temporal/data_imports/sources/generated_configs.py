@@ -4360,7 +4360,8 @@ class UptimerobotSourceConfig(config.Config):
 
 @config.config
 class UsersnapSourceConfig(config.Config):
-    pass
+    jwt_secret: str
+    jwt_id: str
 
 
 @config.config
