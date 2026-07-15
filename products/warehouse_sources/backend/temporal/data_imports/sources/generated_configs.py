@@ -1414,7 +1414,7 @@ class FaunaSourceConfig(config.Config):
 
 @config.config
 class FeaturebaseSourceConfig(config.Config):
-    pass
+    api_key: str
 
 
 @config.config
