@@ -241,6 +241,7 @@ the row lists both.
 | k6_cloud                  | HTTP                        | requests                                                        | ✅                          |
 | katana                    | HTTP                        | requests                                                        | ✅                          |
 | kernel                    | HTTP                        | requests                                                        | ✅                          |
+| klaus                     | HTTP                        | requests                                                        | ✅                          |
 | klaviyo                   | HTTP                        | requests                                                        | ✅                          |
 | lago                      | HTTP                        | requests                                                        | ✅                          |
 | langfuse                  | HTTP                        | requests                                                        | ✅                          |
@@ -641,7 +642,6 @@ doesn't conflict with concurrent PRs.
 - kisi
 - kissmetrics
 - klarna
-- klaus
 - knock
 - koyeb
 - kyve
