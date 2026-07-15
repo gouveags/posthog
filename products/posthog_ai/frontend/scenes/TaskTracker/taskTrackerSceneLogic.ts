@@ -282,8 +282,10 @@ export const taskTrackerSceneLogic = kea<taskTrackerSceneLogicType>([
                     router.actions.push(`/tasks/${newTask.id}`)
                 }
 
-                actions.submitNewTaskSuccess()
+                // Reset before signaling success: the success listener applies any seed held during this
+                // submission, and resetting afterwards would wipe that seed's prefill.
                 actions.resetNewTaskData()
+                actions.submitNewTaskSuccess()
                 actions.loadTasks(values.taskListParams)
                 actions.loadRepositories()
             } catch (error) {
@@ -323,12 +325,26 @@ export const taskTrackerSceneLogic = kea<taskTrackerSceneLogicType>([
             if (!seed) {
                 return
             }
+            // A seed applied while a submit is in flight would start a second concurrent create/run (both
+            // fighting over the composer and `activeCreation`), and the in-flight submit's success reset
+            // would wipe a prefill. Leave it pending; the `submitNewTaskSuccess`/`Failure` listeners
+            // re-apply it once the submission resolves, so the newest CTA still lands.
+            if (values.isSubmittingTask) {
+                return
+            }
             // Consume-once: clear before applying so a re-entrant dispatch can't double-apply/submit.
             actions.consumeSeed()
             actions.setNewTaskData({ description: seed.prompt })
             if (seed.autoSubmit) {
                 actions.submitNewTask()
             }
+        },
+        // Pick up a seed that was deliberately held while a submission was in flight (see `applyComposerSeed`).
+        submitNewTaskSuccess: () => {
+            actions.applyComposerSeed()
+        },
+        submitNewTaskFailure: () => {
+            actions.applyComposerSeed()
         },
     })),
 

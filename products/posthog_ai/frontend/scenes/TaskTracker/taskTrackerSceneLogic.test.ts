@@ -253,4 +253,45 @@ describe('taskTrackerSceneLogic', () => {
         await expectLogic(logic).toFinishAllListeners()
         expect(createCount).toBe(1)
     })
+
+    // A seed arriving while a submit is in flight must not start a second concurrent create/run (the two
+    // requests would fight over the composer and activeCreation) and must not be lost: it stays pending and
+    // applies once the submission resolves — auto-submitting then, or surviving the post-submit form reset
+    // as a prefill. Guards the isSubmittingTask hold in applyComposerSeed and the reset-before-success order.
+    it.each([
+        { autoSubmit: true, expectedCreates: 2 },
+        { autoSubmit: false, expectedCreates: 1 },
+    ])(
+        'holds a seed arriving mid-submit and applies it after the submission resolves (autoSubmit=$autoSubmit)',
+        async ({ autoSubmit, expectedCreates }) => {
+            let createCount = 0
+            useMocks({
+                post: {
+                    '/api/projects/:team/tasks/': async ({ request }) => {
+                        createCount++
+                        createBody = (await request.json()) as Record<string, any>
+                        return [200, { id: `task-${createCount}`, ...createBody }]
+                    },
+                    '/api/projects/:team/tasks/:id/run/': () => [200, { id: 'run-1' }],
+                },
+            })
+            logic.mount()
+
+            composerSeedLogic().actions.setSeed({ prompt: 'first', autoSubmit: true })
+            // The first submit is now in flight; a second CTA fires before it resolves.
+            composerSeedLogic().actions.setSeed({ prompt: 'second', autoSubmit })
+            // Held, not applied: the seed is still pending and no second submission started.
+            expect(composerSeedLogic().values.seed).toMatchObject({ prompt: 'second' })
+
+            await expectLogic(logic).toFinishAllListeners()
+
+            expect(createCount).toBe(expectedCreates)
+            expect(composerSeedLogic().values.seed).toBeNull()
+            if (autoSubmit) {
+                expect(createBody).toMatchObject({ description: 'second' })
+            } else {
+                expect(logic.values.newTaskData.description).toBe('second')
+            }
+        }
+    )
 })
